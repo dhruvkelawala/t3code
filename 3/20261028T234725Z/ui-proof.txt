@@ -1,0 +1,7 @@
+PASS Header, sidebar and palette offer Make before an explicit assignment
+PASS Second client changes to Explicit agent without reload
+PASS Palette Remove clears real assignment and restores pinned fallback on first client
+PASS Fallback offers Make, can become explicit, then offers Remove
+PASS No project-agent pointer in localStorage or sessionStorage
+PASS Read-only client hides Make and Remove in header, sidebar and palette
+All UI proof passed

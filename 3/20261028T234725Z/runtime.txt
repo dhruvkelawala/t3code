@@ -1,0 +1,4 @@
+{"action":"Initial fallback","clients":[{"pointer":null,"agent":"Pinned fallback"},{"pointer":null,"agent":"Pinned fallback"}],"reloads":0}
+{"action":"Set explicit agent","sequence":44,"clients":[{"pointer":"agent-b2261761-0243-4a5b-903f-59edb51797e4","agent":"Explicit agent"},{"pointer":"agent-b2261761-0243-4a5b-903f-59edb51797e4","agent":"Explicit agent"}],"reloads":0}
+{"action":"Clear restores fallback","sequence":45,"clients":[{"pointer":null,"agent":"Pinned fallback"},{"pointer":null,"agent":"Pinned fallback"}],"reloads":0}
+{"action":"Complete","status":"passed","head":"20a26747f9a1ef649a350ba4c8e73bdbf7b49b0f","transport":"two independent authenticated WebSocket clients using real shellReducer and resolveProjectAgent","providerTurns":0,"clientStorageWrites":0}
