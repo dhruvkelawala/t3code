@@ -10,6 +10,7 @@ import {
 import { canSnooze, effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
 import {
   AuthOrchestrationOperateScope,
+  CommandId,
   type ScopedThreadRef,
   type ThreadId,
 } from "@t3tools/contracts";
@@ -31,6 +32,7 @@ import {
   readEnvironmentServerConfigLoaded,
   readEnvironmentSupportsAutoSettleOptOut,
   readThreadShell,
+  readProject,
   useProjects,
 } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
@@ -46,6 +48,11 @@ import { useCopyToClipboard } from "./useCopyToClipboard";
 import { useNewThreadHandler } from "./useHandleNewThread";
 import { useClientSettings } from "./useSettings";
 import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
+import { projectEnvironment } from "../state/projects";
+import { appAtomRegistry } from "../rpc/atomRegistry";
+import { projectAgentAction } from "../lib/projectAgentAction";
+import { useAtomCommand } from "../state/use-atom-command";
+import { randomUUID } from "../lib/utils";
 
 function failureToast(title: string, error: unknown) {
   toastManager.add(
@@ -88,6 +95,9 @@ export function useThreadActionMenu(input: {
     turnThreadIntoProject,
   } = useThreadActions();
   const updateThreadMetadata = useOrchestrationCommand(threadEnvironment.updateMetadata, {
+    reportFailure: false,
+  });
+  const setAgentThread = useAtomCommand(projectEnvironment.setAgentThread, {
     reportFailure: false,
   });
   const handleNewThread = useNewThreadHandler();
@@ -135,6 +145,13 @@ export function useThreadActionMenu(input: {
       const items = buildThreadActionMenuItems({
         canOperate: readEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope),
         canFind: onFind !== undefined,
+        projectAgentAction: projectAgentAction(
+          readProject(scopeProjectRef(thread.environmentId, thread.projectId)),
+          thread,
+          appAtomRegistry.get(
+            projectEnvironment.setAgentThread.permissionAtom(thread.environmentId),
+          ),
+        ),
         branch: thread.branch ?? null,
         projectFilter: null,
         isPinned: thread.pinnedAt != null,
@@ -191,6 +208,19 @@ export function useThreadActionMenu(input: {
       switch (action) {
         case "find":
           onFind?.(threadRef);
+          return;
+        case "make-project-agent":
+        case "remove-project-agent":
+          await reportFailure("Failed to update project agent", () =>
+            setAgentThread({
+              environmentId: thread.environmentId,
+              input: {
+                commandId: CommandId.make(randomUUID()),
+                projectId: thread.projectId,
+                agentThreadId: action === "make-project-agent" ? thread.id : null,
+              },
+            }),
+          );
           return;
         case "project-settings": {
           const project = projects.find(
