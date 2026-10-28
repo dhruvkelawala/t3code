@@ -200,7 +200,7 @@ function AgentNotchRow() {
   const setEnabled = useUiStateStore((state) => state.setAgentNotchEnabled);
   return (
     <SettingsRow
-      title="Agent notch"
+      {...searchableSetting("agent-notch")}
       description="Open project agents and see their active sessions from the edge of the sidebar."
       control={<Switch checked={enabled} onCheckedChange={setEnabled} aria-label="Agent notch" />}
     />
@@ -212,7 +212,7 @@ function AgentNotchSizeRow() {
   const setSize = useUiStateStore((state) => state.setAgentNotchSize);
   return (
     <SettingsRow
-      title="Notch size"
+      {...searchableSetting("agent-notch-size")}
       description="Scale the tab, agents, labels, and cards together."
       control={
         <Select
@@ -244,7 +244,7 @@ function AgentNotchCornerRow() {
   const setCorner = useUiStateStore((state) => state.setAgentNotchCorner);
   return (
     <SettingsRow
-      title="Notch corners"
+      {...searchableSetting("agent-notch-corner")}
       description="Round the open notch like the composer, or a little more."
       control={
         <Select

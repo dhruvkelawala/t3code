@@ -859,6 +859,7 @@ export {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  SIDEBAR_MOBILE_QUERY,
   useSidebar,
   useSidebarVisibility,
 };
