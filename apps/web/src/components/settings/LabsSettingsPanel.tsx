@@ -1,3 +1,4 @@
+import { isAgentNotchCorner, isAgentNotchSize, useUiStateStore } from "../../uiStateStore";
 import { useAuth } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
 
@@ -5,6 +6,7 @@ import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { ScopedSwitch } from "./ScopedSwitch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
@@ -16,6 +18,9 @@ export function LabsSettingsPanel() {
   return (
     <SettingsPageContainer>
       <SettingsSection id="beta" title="Beta">
+        <AgentNotchRow />
+        <AgentNotchSizeRow />
+        <AgentNotchCornerRow />
         <BoringSidebarRow />
         <BoringSidebarMultilineRow />
         {/* Clerk is only mounted when this build has T3 Connect. */}
@@ -189,3 +194,79 @@ function SimlockHostsRow() {
     />
   );
 }
+
+function AgentNotchRow() {
+  const enabled = useUiStateStore((state) => state.agentNotchEnabled);
+  const setEnabled = useUiStateStore((state) => state.setAgentNotchEnabled);
+  return (
+    <SettingsRow
+      title="Agent notch"
+      description="Open project agents and see their active sessions from the edge of the sidebar."
+      control={<Switch checked={enabled} onCheckedChange={setEnabled} aria-label="Agent notch" />}
+    />
+  );
+}
+
+function AgentNotchSizeRow() {
+  const size = useUiStateStore((state) => state.agentNotchSize);
+  const setSize = useUiStateStore((state) => state.setAgentNotchSize);
+  return (
+    <SettingsRow
+      title="Notch size"
+      description="Scale the tab, agents, labels, and cards together."
+      control={
+        <Select
+          value={size}
+          onValueChange={(value) => {
+            if (isAgentNotchSize(value)) setSize(value);
+          }}
+        >
+          <SelectTrigger size="sm" className="w-40" aria-label="Notch size">
+            <SelectValue>{NOTCH_SIZE_LABELS[size]}</SelectValue>
+          </SelectTrigger>
+          <SelectPopup align="end" alignItemWithTrigger={false}>
+            {Object.entries(NOTCH_SIZE_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
+    />
+  );
+}
+
+const NOTCH_SIZE_LABELS = { small: "Small", medium: "Medium (default)", large: "Large" };
+
+function AgentNotchCornerRow() {
+  const corner = useUiStateStore((state) => state.agentNotchCorner);
+  const setCorner = useUiStateStore((state) => state.setAgentNotchCorner);
+  return (
+    <SettingsRow
+      title="Notch corners"
+      description="Round the open notch like the composer, or a little more."
+      control={
+        <Select
+          value={corner}
+          onValueChange={(value) => {
+            if (isAgentNotchCorner(value)) setCorner(value);
+          }}
+        >
+          <SelectTrigger size="sm" className="w-40" aria-label="Notch corners">
+            <SelectValue>{NOTCH_CORNER_LABELS[corner]}</SelectValue>
+          </SelectTrigger>
+          <SelectPopup align="end" alignItemWithTrigger={false}>
+            {Object.entries(NOTCH_CORNER_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
+    />
+  );
+}
+
+const NOTCH_CORNER_LABELS = { "2xl": "2xl, 16 px (default)", "3xl": "3xl, 20 px" };

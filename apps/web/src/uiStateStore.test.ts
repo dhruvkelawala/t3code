@@ -20,6 +20,9 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
     projectExpandedById: {},
     projectOrder: [],
     sidebarProjectScopeKeys: [],
+    agentNotchEnabled: true,
+    agentNotchSize: "medium",
+    agentNotchCorner: "2xl",
     threadLastVisitedAtById: {},
     threadChangedFilesExpandedById: {},
     defaultAdvertisedEndpointKey: null,
@@ -126,6 +129,9 @@ describe("parsePersistedState", () => {
       },
       defaultAdvertisedEndpointKey: "desktop-core:lan:http",
       sidebarProjectScopeKeys: [],
+      agentNotchEnabled: true,
+      agentNotchSize: "medium",
+      agentNotchCorner: "2xl",
       pullRequestMergeMethod: "merge",
       threadChangedFilesExpandedById: {
         "environment:thread-1": {
@@ -147,6 +153,24 @@ describe("parsePersistedState", () => {
     });
 
     expect(parsed.threadChangedFilesExpandedById).toEqual({});
+  });
+
+  it.each([
+    [{}, { agentNotchEnabled: true, agentNotchSize: "medium", agentNotchCorner: "2xl" }],
+    [
+      { agentNotchEnabled: false, agentNotchSize: "small", agentNotchCorner: "3xl" },
+      { agentNotchEnabled: false, agentNotchSize: "small", agentNotchCorner: "3xl" },
+    ],
+    [
+      { agentNotchSize: "large", agentNotchCorner: "2xl" },
+      { agentNotchEnabled: true, agentNotchSize: "large", agentNotchCorner: "2xl" },
+    ],
+    [
+      { agentNotchSize: "huge", agentNotchCorner: "pill" },
+      { agentNotchEnabled: true, agentNotchSize: "medium", agentNotchCorner: "2xl" },
+    ],
+  ])("restores valid notch preferences and defaults invalid values: %j", (saved, expected) => {
+    expect(parsePersistedState(saved)).toMatchObject(expected);
   });
 
   it("migrates legacy CWD project preferences into local alias keys", () => {
@@ -204,6 +228,9 @@ describe("uiStateStore persistence", () => {
         logical: false,
       },
       projectOrder: ["physical-b", "physical-a"],
+      agentNotchEnabled: false,
+      agentNotchSize: "small",
+      agentNotchCorner: "3xl",
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
       },
@@ -226,6 +253,9 @@ describe("uiStateStore persistence", () => {
         logical: false,
       },
       projectOrder: ["physical-b", "physical-a"],
+      agentNotchEnabled: false,
+      agentNotchSize: "small",
+      agentNotchCorner: "3xl",
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
       },

@@ -18,6 +18,18 @@ const LEGACY_PERSISTED_STATE_KEYS = [
   "codething:renderer-state:v1",
 ] as const;
 
+export type AgentNotchSize = "small" | "medium" | "large";
+
+export function isAgentNotchSize(value: unknown): value is AgentNotchSize {
+  return value === "small" || value === "medium" || value === "large";
+}
+
+export type AgentNotchCorner = "2xl" | "3xl";
+
+export function isAgentNotchCorner(value: unknown): value is AgentNotchCorner {
+  return value === "2xl" || value === "3xl";
+}
+
 export interface PersistedUiState {
   projectExpandedById?: Record<string, boolean>;
   projectOrder?: string[];
@@ -28,6 +40,9 @@ export interface PersistedUiState {
   defaultAdvertisedEndpointKey?: string | null;
   sidebarProjectScopeKey?: string | null;
   sidebarProjectScopeKeys?: string[];
+  agentNotchEnabled?: boolean;
+  agentNotchSize?: string;
+  agentNotchCorner?: string;
   threadChangedFilesExpansionVersion?: number;
   threadChangedFilesExpandedById?: Record<string, Record<string, boolean>>;
   pullRequestMergeMethod?: string;
@@ -37,6 +52,9 @@ export interface UiProjectState {
   projectExpandedById: Record<string, boolean>;
   projectOrder: string[];
   sidebarProjectScopeKeys: string[];
+  agentNotchEnabled: boolean;
+  agentNotchSize: AgentNotchSize;
+  agentNotchCorner: AgentNotchCorner;
 }
 
 export interface UiThreadState {
@@ -59,6 +77,9 @@ const initialState: UiState = {
   projectExpandedById: {},
   projectOrder: [],
   sidebarProjectScopeKeys: [],
+  agentNotchEnabled: true,
+  agentNotchSize: "medium",
+  agentNotchCorner: "2xl",
   threadLastVisitedAtById: {},
   threadChangedFilesExpandedById: {},
   defaultAdvertisedEndpointKey: null,
@@ -154,6 +175,13 @@ export function parsePersistedState(parsed: PersistedUiState): UiState {
     sidebarProjectScopeKeys: sanitizeStringArray(
       parsed.sidebarProjectScopeKeys ?? [parsed.sidebarProjectScopeKey],
     ),
+    agentNotchEnabled: parsed.agentNotchEnabled !== false,
+    agentNotchSize: isAgentNotchSize(parsed.agentNotchSize)
+      ? parsed.agentNotchSize
+      : initialState.agentNotchSize,
+    agentNotchCorner: isAgentNotchCorner(parsed.agentNotchCorner)
+      ? parsed.agentNotchCorner
+      : initialState.agentNotchCorner,
     pullRequestMergeMethod: isPullRequestMergeMethod(parsed.pullRequestMergeMethod)
       ? parsed.pullRequestMergeMethod
       : initialState.pullRequestMergeMethod,
@@ -228,6 +256,9 @@ export function persistState(state: UiState): void {
         threadLastVisitedAtById: state.threadLastVisitedAtById,
         defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
         sidebarProjectScopeKeys: state.sidebarProjectScopeKeys,
+        agentNotchEnabled: state.agentNotchEnabled,
+        agentNotchSize: state.agentNotchSize,
+        agentNotchCorner: state.agentNotchCorner,
         // Older clients read only this field.
         sidebarProjectScopeKey:
           state.sidebarProjectScopeKeys.length === 1
@@ -429,6 +460,9 @@ export function reorderProjects(
 }
 
 interface UiStateStore extends UiState {
+  setAgentNotchEnabled: (enabled: boolean) => void;
+  setAgentNotchSize: (size: AgentNotchSize) => void;
+  setAgentNotchCorner: (corner: AgentNotchCorner) => void;
   markThreadVisited: (threadId: string, visitedAt: string) => void;
   markThreadUnread: (threadId: string, latestTurnCompletedAt: string | null | undefined) => void;
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
@@ -445,6 +479,9 @@ interface UiStateStore extends UiState {
 
 export const useUiStateStore = create<UiStateStore>((set) => ({
   ...readPersistedState(),
+  setAgentNotchEnabled: (agentNotchEnabled) => set({ agentNotchEnabled }),
+  setAgentNotchSize: (agentNotchSize) => set({ agentNotchSize }),
+  setAgentNotchCorner: (agentNotchCorner) => set({ agentNotchCorner }),
   markThreadVisited: (threadId, visitedAt) =>
     set((state) => markThreadVisited(state, threadId, visitedAt)),
   markThreadUnread: (threadId, latestTurnCompletedAt) =>
