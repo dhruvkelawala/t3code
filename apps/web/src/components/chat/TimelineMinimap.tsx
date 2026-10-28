@@ -12,6 +12,7 @@ import {
 } from "./MessagesTimeline.logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
+import { usePanelAnimationSettings } from "../../panelAnimations";
 
 function timelineMinimapEventTargetsPreview(target: EventTarget): boolean {
   return target instanceof Element && target.closest("[data-minimap-preview]") !== null;
@@ -35,6 +36,7 @@ function onMouseButtonsReleased(onRelease: () => void): () => void {
 }
 
 export function TimelineMinimap({
+  edge = "default",
   hasPersistentGutter,
   hitStripWidth,
   currentIndex,
@@ -43,6 +45,7 @@ export function TimelineMinimap({
   onWheel,
   onSelect,
 }: {
+  edge?: "default" | "concealed" | "revealed";
   hasPersistentGutter: boolean;
   hitStripWidth: number;
   currentIndex: number | null;
@@ -51,6 +54,7 @@ export function TimelineMinimap({
   onWheel: (event: WheelEvent) => void;
   onSelect: (item: TimelineMinimapItem) => void;
 }) {
+  const animation = usePanelAnimationSettings();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const wheelTargetRef = (node: HTMLDivElement | null) => {
     if (!node) return;
@@ -116,9 +120,12 @@ export function TimelineMinimap({
     <div
       className={cn(
         "group/minimap pointer-events-none absolute inset-y-0 left-0 z-40 hidden w-18 [@media(pointer:fine)]:block",
-        hasPersistentGutter
-          ? "opacity-100"
-          : "opacity-0 transition-opacity duration-150 hover:opacity-100 focus-within:opacity-100",
+        edge === "concealed"
+          ? "invisible opacity-0 transition-[opacity,visibility] duration-150"
+          : edge === "revealed" || hasPersistentGutter
+            ? "opacity-100 transition-opacity duration-150"
+            : "opacity-0 transition-opacity duration-150 hover:opacity-100 focus-within:opacity-100",
+        edge !== "default" && !animation.active && "transition-none",
       )}
       data-testid="timeline-minimap"
       data-persistent-gutter={hasPersistentGutter ? "true" : "false"}
