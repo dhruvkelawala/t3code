@@ -18,6 +18,10 @@ import {
 function makeUiState(overrides: Partial<UiState> = {}): UiState {
   return {
     projectExpandedById: {},
+    projectAgentThreadIds: {},
+    agentNotchEnabled: true,
+    agentNotchSize: "medium",
+    agentNotchCorner: "2xl",
     projectOrder: [],
     sidebarProjectScopeKeys: [],
     threadLastVisitedAtById: {},
@@ -95,6 +99,33 @@ describe("uiStateStore pure functions", () => {
 });
 
 describe("parsePersistedState", () => {
+  it.each([
+    ["small", "small"],
+    ["medium", "medium"],
+    ["large", "large"],
+    [undefined, "medium"],
+    ["huge", "medium"],
+    [1, "medium"],
+    [null, "medium"],
+    [{}, "medium"],
+  ])("restores notch size %j as %s", (stored, expected) => {
+    expect(parsePersistedState({ agentNotchSize: stored } as PersistedUiState).agentNotchSize).toBe(
+      expected,
+    );
+  });
+
+  it.each([
+    ["2xl", "2xl"],
+    ["3xl", "3xl"],
+    [undefined, "2xl"],
+    ["lg", "2xl"],
+    [20, "2xl"],
+  ])("restores notch corner %j as %s", (stored, expected) => {
+    expect(
+      parsePersistedState({ agentNotchCorner: stored } as PersistedUiState).agentNotchCorner,
+    ).toBe(expected);
+  });
+
   it("hydrates raw UI-owned state without server entities", () => {
     const parsed = parsePersistedState({
       projectExpandedById: {
@@ -117,6 +148,10 @@ describe("parsePersistedState", () => {
     });
 
     expect(parsed).toEqual({
+      projectAgentThreadIds: {},
+      agentNotchEnabled: true,
+      agentNotchSize: "medium",
+      agentNotchCorner: "2xl",
       projectExpandedById: {
         logical: false,
       },
@@ -200,6 +235,7 @@ describe("uiStateStore persistence", () => {
 
   it("persists raw UI preferences including thread visit markers", () => {
     const state = makeUiState({
+      agentNotchSize: "small",
       projectExpandedById: {
         logical: false,
       },
@@ -222,6 +258,10 @@ describe("uiStateStore persistence", () => {
       localStorageStub.getItem(PERSISTED_STATE_KEY) ?? "{}",
     ) as PersistedUiState;
     expect(persisted).toEqual({
+      projectAgentThreadIds: {},
+      agentNotchEnabled: true,
+      agentNotchSize: "small",
+      agentNotchCorner: "2xl",
       projectExpandedById: {
         logical: false,
       },

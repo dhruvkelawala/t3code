@@ -2,6 +2,7 @@ import type { ContextMenuItem } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
 
 export type ThreadActionMenuId =
+  | "project-agent"
   | "new-thread-on-branch"
   | "filter-by-project"
   | "project-settings"
@@ -66,6 +67,7 @@ export function buildDraftActionMenuItems(options: {
 }
 
 export interface ThreadActionMenuState {
+  readonly projectAgent?: ContextMenuItem<"project-agent"> | undefined;
   readonly canOperate: boolean;
   readonly branch: string | null;
   readonly projectFilter: {
@@ -95,6 +97,7 @@ export interface ThreadActionMenuState {
 /** Local navigation, read markers, and copying remain available to read-only clients. */
 export function threadActionRequiresOperate(action: ThreadActionMenuId): boolean {
   return ![
+    "project-agent",
     "new-thread-on-branch",
     "project-settings",
     "mark-unread",
@@ -111,6 +114,7 @@ export function buildThreadActionMenuItems(
   state: ThreadActionMenuState,
 ): ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> {
   const items: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> = [
+    ...(state.projectAgent ? [state.projectAgent] : []),
     ...(state.branch
       ? [
           {
