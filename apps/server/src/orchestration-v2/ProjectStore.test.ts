@@ -39,6 +39,8 @@ it.layer(ProjectStore.layer.pipe(Layer.provideMerge(SqlitePersistence.layerMemor
           },
         });
 
+        assert.isNull(Option.getOrThrow(yield* projects.getShell(projectId)).agentThreadId);
+
         const rows = yield* sql<{ readonly defaultModelSelection: string | null }>`
           SELECT default_model_selection_json AS "defaultModelSelection"
           FROM projection_projects

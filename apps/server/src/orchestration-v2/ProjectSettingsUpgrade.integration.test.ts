@@ -34,6 +34,7 @@ const icon = { kind: "emoji", emoji: "🦊" } as const;
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
 const expectedSettings = {
+  agent_thread_id: null,
   default_thread_env_mode: "worktree",
   auto_pull: 1,
   favicon_path: "brand/icon.svg",
@@ -43,7 +44,7 @@ const expectedSettings = {
 const readSettings = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<typeof expectedSettings>`
-    SELECT default_thread_env_mode, auto_pull, favicon_path, project_icon_json
+    SELECT agent_thread_id, default_thread_env_mode, auto_pull, favicon_path, project_icon_json
     FROM projection_projects
     WHERE project_id = ${projectId}
   `;
@@ -188,6 +189,7 @@ it.live("keeps project settings through the V2 migrations and the first V2 boot"
         assert.deepEqual(yield* readSettings, expectedSettings);
         const project = yield* (yield* ProjectService.ProjectService).getById(projectId);
         assert.equal(project._tag, "Some");
+        if (project._tag === "Some") assert.isNull(project.value.agentThreadId);
       }).pipe(Effect.provide(layerRuntime(dbPath)));
     }),
   ).pipe(Effect.provide(NodeServices.layer)),
