@@ -155,6 +155,23 @@ right-click it, to start a thread in that project. Pinned threads stay above the
 Snoozed and Settled stay below them. In this mode you cannot drag threads, and the Working section
 is off. Each device keeps its own choice.
 
+## Project agents and the notch
+
+A project agent is an ordinary thread you use to coordinate a project's work.
+Choose **Make project agent** from a thread's menu, or find the action in the
+command palette. **Open project agent** returns to it. **Clear project agent**
+removes the explicit choice. Without one, the project uses its most recently
+updated pinned thread that you created. Each environment saves its choice, so
+clients connected to that environment see the same agent.
+
+On web and desktop, hover or focus the glass tab beside the sidebar to see agents
+from your connected environments. Hover an agent for its sessions; select it to
+open its thread and filter the sidebar to its project. Enter focuses the first
+agent, arrow keys move between agents, and Escape returns to the tab. Hold Cmd or
+Ctrl on its own to show the timeline minimap instead.
+
+Turn the notch off or change its size and corners in **Settings → Labs**.
+
 ## Settle finished work
 
 Choose **Settle thread** from its menu to move finished work out of the active list
