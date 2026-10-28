@@ -161,6 +161,12 @@ export function createProjectEnvironmentAtoms<R, E>(
       scheduler: projectScheduler,
       concurrency: projectConcurrency,
     }),
+    setAgentThread: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:projects:set-agent-thread",
+      tag: WS_METHODS.projectsSetAgentThread,
+      scheduler: projectScheduler,
+      concurrency: projectConcurrency,
+    }),
     delete: createEnvironmentCommand(runtime, {
       label: "environment-data:commands:project:delete",
       execute: deleteProject,

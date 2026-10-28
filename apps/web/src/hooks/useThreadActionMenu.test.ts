@@ -35,6 +35,7 @@ function recordEffect(action: string) {
 }
 
 vi.mock("../components/CustomSnoozeDialog", () => ({ requestCustomSnooze: vi.fn() }));
+vi.mock("../lib/utils", () => ({ randomUUID: () => "command-id" }));
 vi.mock("react", () => ({
   useCallback: (callback: unknown) => callback,
   useMemo: (factory: () => unknown) => factory(),
@@ -58,10 +59,22 @@ vi.mock("../state/entities", () => ({
     worktreePath: null,
     runtime: null,
     latestRun: null,
+    lineage: { rootThreadId: "thread", parentThreadId: null, relationshipToParent: null },
+    archivedAt: null,
+    deletedAt: null,
   }),
+  readProject: () => ({ id: "project", environmentId: "secondary" }),
   useProjects: () => [{ id: "project", environmentId: "secondary" }],
 }));
 vi.mock("../state/environments", () => ({ usePrimaryEnvironmentId: () => "primary" }));
+vi.mock("../state/projects", () => ({
+  projectEnvironment: {
+    setAgentThread: { permissionAtom: (environmentId: string) => environmentId },
+  },
+}));
+vi.mock("../rpc/atomRegistry", () => ({
+  appAtomRegistry: { get: (environmentId: string) => state.granted.has(environmentId) },
+}));
 vi.mock("../state/threads", () => ({ threadEnvironment: { updateMetadata: "metadata" } }));
 vi.mock("../state/use-atom-command", () => ({
   useAtomCommand: () => async () => {

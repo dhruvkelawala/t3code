@@ -1,8 +1,10 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
+import type { ProjectAgentActionId } from "../lib/projectAgentAction";
 
 export type ThreadActionMenuId =
   | "find"
+  | ProjectAgentActionId
   | "new-thread-on-branch"
   | "filter-by-project"
   | "turn-into-project"
@@ -70,6 +72,7 @@ export function buildDraftActionMenuItems(options: {
 export interface ThreadActionMenuState {
   readonly canOperate: boolean;
   readonly canFind?: boolean;
+  readonly projectAgentAction?: ContextMenuItem<ProjectAgentActionId> | null;
   readonly branch: string | null;
   readonly projectFilter: {
     readonly label: string;
@@ -136,6 +139,7 @@ export function buildThreadActionMenuItems(
             : { id: "pin" as const, label: "Pin thread", icon: "pin" },
         ]
       : []),
+    ...(state.canOperate && state.projectAgentAction ? [state.projectAgentAction] : []),
     ...(state.supports.settlement
       ? [
           state.isSettled

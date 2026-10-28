@@ -1,3 +1,6 @@
+import { projectEnvironment } from "../state/projects";
+import { useAtomCommand } from "../state/use-atom-command";
+import { projectAgentAction } from "../lib/projectAgentAction";
 import { attachSidebarTree, SIDEBAR_TREE_PROPS } from "../lib/sidebarTree";
 import { type EnvironmentId, type ScopedProjectRef } from "@t3tools/contracts";
 import type { EnvironmentServerConfig } from "@t3tools/client-runtime/connection";
@@ -54,6 +57,7 @@ import {
 } from "@t3tools/client-runtime/environment";
 import {
   AuthOrchestrationOperateScope,
+  CommandId,
   ProjectId,
   type ScopedThreadRef,
   type ThreadId,
@@ -100,7 +104,7 @@ import { useShortcutModifierState } from "../shortcutModifierState";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { isModelPickerOpen } from "../modelPickerVisibility";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
-import { isMacPlatform } from "~/lib/utils";
+import { isMacPlatform, randomUUID } from "~/lib/utils";
 import { readLocalApi } from "../localApi";
 import { useSidebarPendingFileDropStore } from "../sidebarPendingFileDropStore";
 import { selectProjectGroupingSettings } from "@t3tools/client-runtime/state/project-grouping";
@@ -884,6 +888,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     projectGroupByScopeKey,
     projectScopeItems,
   } = useSidebarLookups();
+  const setAgentThread = useAtomCommand(projectEnvironment.setAgentThread);
   const delegatedUnderParent = useDelegatedUnderParent();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -2546,6 +2551,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 threadRef.environmentId,
                 AuthOrchestrationOperateScope,
               ),
+              projectAgentAction: projectAgentAction(
+                projectByKey.get(`${thread.environmentId}:${thread.projectId}`),
+                thread,
+                appAtomRegistry.get(
+                  projectEnvironment.setAgentThread.permissionAtom(thread.environmentId),
+                ),
+              ),
               branch: thread.branch ?? null,
               projectFilter: threadProjectGroup
                 ? {
@@ -2592,6 +2604,17 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           return;
         }
         switch (clicked.value) {
+          case "make-project-agent":
+          case "remove-project-agent":
+            await setAgentThread({
+              environmentId: thread.environmentId,
+              input: {
+                commandId: CommandId.make(randomUUID()),
+                projectId: thread.projectId,
+                agentThreadId: clicked.value === "make-project-agent" ? thread.id : null,
+              },
+            });
+            return;
           case "filter-by-project":
             if (threadProjectGroup) {
               setProjectScopeKeys(
