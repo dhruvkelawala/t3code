@@ -1,0 +1,34 @@
+Verification at b9a6186a6e31cc04d621c8c29dc87ba2fb4d38a0
+
+Isolated primary and secondary development servers; real RPC-created projects, server-persisted agent selections and pinned fallbacks.
+No paid provider turns.
+
+The UI runner included an outdated hard-coded head field; its actual checkout was b9a6186a6e, including the Escape repair.
+ui-proof.txt
+{"action":"Server-selected project agents","agents":["Lore agent, idle, 0 need you, 0 working, 2 sessions","T3 Code agent, idle, 0 need you, 0 working, 2 sessions"]}
+{"action":"One card glides and cross-fades","firstY":386.79998779296875,"secondY":447.6000061035156}
+{"action":"Animated keyboard flow","enter":"first agent","arrows":"next/previous","escape":"tab focused and closed"}
+{"action":"Selecting agent opens its server thread and scopes sidebar","scope":["github.com/dhruvkelawala/t3code"]}
+{"action":"Modifier and palette layering","hold":"concealed","release":"restored","chord":"no peek","paletteCoversNotch":true}
+{"action":"Labs controls persist across reload","enabled":false,"size":"small","corner":"3xl","settingsCoverNotch":true}
+{"action":"Fixed screen corner","size":"small","corner":"2xl","pixels":16}
+{"action":"Fixed screen corner","size":"small","corner":"3xl","pixels":20}
+{"action":"Fixed screen corner","size":"medium","corner":"2xl","pixels":16}
+{"action":"Fixed screen corner","size":"medium","corner":"3xl","pixels":20}
+{"action":"Fixed screen corner","size":"large","corner":"2xl","pixels":16}
+{"action":"Fixed screen corner","size":"large","corner":"3xl","pixels":20}
+{"action":"Reduced motion preserves opacity fades without movement","surfaceTransition":"0s","fade":"160ms","reactionAnimation":"none"}
+{"action":"Panel animations off","duration":"0ms","characterReactions":false}
+{"action":"Narrow web layout","width":390,"notch":"hidden"}
+{"action":"Complete","head":"a89e310cb4f20ee9003114bf8952afa8afc46d0a","pageErrors":[],"paidProviderTurns":0}
+
+remote-proof.txt
+{"agents":["Remote notes agent, idle, 0 need you, 0 working, 0 sessions","T3 Code agent, idle, 0 need you, 0 working, 3 sessions","Lore agent, idle, 0 need you, 0 working, 2 sessions"],"remoteNavigation":"correct environment and thread","scope":["e88a67d0-ac18-49b0-a95f-a060c80a7fb3:/tmp/t3-issue-4/remote-project"],"paidProviderTurns":0}
+
+replay.txt
+Replay thread a4f9652f-d92e-40b5-95a4-1590769a09ed
+Free Replay multi-turn timeline: Cmd hold reveals minimap, release restores notch.
+
+approval-proof.txt
+Real Replay approval session appears as 1 need you on the agent, session ring and pointer card; no paid provider turn.
+
