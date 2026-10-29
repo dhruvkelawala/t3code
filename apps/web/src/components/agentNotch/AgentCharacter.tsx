@@ -32,7 +32,7 @@ export function AgentCharacter({
       strokeLinejoin="round"
     >
       <g className={styles.reaction}>
-        <g className={styles.spring}>
+        <g>
           <path d={CORDS[cord]} stroke="currentColor" strokeWidth="4.1" />
           <circle cx="18" cy="19" r="6.2" fill="var(--background)" />
           {state === "offline" ? (
@@ -63,7 +63,7 @@ export function AgentCharacter({
 function CharacterMark({ state }: { state: AgentCharacterState }) {
   if (state === "needs you") {
     return (
-      <g className={cn(styles.signal, MARK_COLORS.needsYou)}>
+      <g className={MARK_COLORS.needsYou}>
         <path
           d="M24 1h9a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-4l-4 3v-3h-1a2 2 0 0 1 -2 -2V3a2 2 0 0 1 2 -2Z"
           fill="currentColor"
@@ -101,7 +101,7 @@ function CharacterMark({ state }: { state: AgentCharacterState }) {
   if (state === "working") {
     return (
       <g className={MARK_COLORS.working} stroke="currentColor" strokeWidth="2">
-        <path d="M26 3h3" className={styles.beat} />
+        <path d="M26 3h3" />
         <path d="M28 7h5" />
       </g>
     );

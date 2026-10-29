@@ -14,25 +14,12 @@
   fill: var(--agent-eye);
 }
 .reaction,
-.spring,
 .blink {
   transform-origin: 18px 19px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  :global([data-tick="0"]) .character[data-state="working"] .pupil {
+  .character[data-state="working"] .pupil {
     transform: translateX(-0.7px);
-  }
-  :global([data-tick="1"]) .character[data-state="working"] .pupil {
-    transform: translateX(0.7px);
-  }
-  :global([data-tick="1"]) .character[data-state="working"] .spring {
-    transform: scaleX(0.91);
-  }
-  :global([data-tick="1"]) .character[data-state="working"] .beat {
-    opacity: 0.3;
-  }
-  :global([data-tick="1"]) .character[data-state="needs you"] .signal {
-    opacity: 0.4;
   }
   :global(button:is(:hover, :focus-visible)) .character[data-reactive="true"] .reaction {
     animation: hello 700ms steps(1) 1;
