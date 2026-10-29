@@ -54,6 +54,7 @@ function Notch() {
   const cardBody = useRef<HTMLDivElement>(null);
   const handle = useRef<HTMLButtonElement>(null);
   const focusOnOpen = useRef(false);
+  const restoringTabFocus = useRef(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const attention = resolveProjectStatusIndicator(
@@ -71,7 +72,14 @@ function Notch() {
     setOpen(false);
     setPinned(false);
     setActive(null);
-    if (restoreFocus) handle.current?.focus();
+    if (restoreFocus) {
+      restoringTabFocus.current = true;
+      try {
+        handle.current?.focus();
+      } finally {
+        restoringTabFocus.current = false;
+      }
+    }
   });
   const enter = () => {
     cancelClose();
@@ -234,7 +242,8 @@ function Notch() {
         aria-expanded={shown}
         aria-controls="agent-notch-panel"
         onFocus={(event) => {
-          if (!root.current?.contains(event.relatedTarget)) setOpen(true);
+          if (!restoringTabFocus.current && !root.current?.contains(event.relatedTarget))
+            setOpen(true);
         }}
         onBlur={(event) => {
           if (!root.current?.contains(event.relatedTarget)) leave();
