@@ -73,12 +73,10 @@ function Notch() {
     setPinned(false);
     setActive(null);
     if (restoreFocus) {
+      // focus() runs the handle's onFocus synchronously; the flag stops it reopening the notch.
       restoringTabFocus.current = true;
-      try {
-        handle.current?.focus();
-      } finally {
-        restoringTabFocus.current = false;
-      }
+      handle.current?.focus();
+      restoringTabFocus.current = false;
     }
   });
   const enter = () => {
