@@ -20,6 +20,7 @@ import { AgentCharacter } from "./AgentCharacter";
 import styles from "./agentNotch.module.css";
 import { observeResize } from "../../lib/observeResize";
 import { useStableCallback } from "../../hooks/useStableCallback";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 export function AgentNotch() {
   const active = useAgentNotchActive();
@@ -37,6 +38,7 @@ function Notch() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const router = useRouter();
   const animation = usePanelAnimationSettings();
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [open, setOpen] = useState(false);
   const shown = open && !concealed;
   const [pinned, setPinned] = useState(false);
@@ -186,7 +188,7 @@ function Notch() {
     : 0;
   const bulge = notchOutline({ ...OPEN, height: height - 2 * OPEN.flare, corner: radius }, height);
   const tab = notchOutline(TAB, height);
-  const duration = animation.active ? Math.min(180, animation.durationMs) : 0;
+  const duration = animation.active || reducedMotion ? Math.min(180, animation.durationMs) : 0;
   return (
     <div
       ref={root}
@@ -271,7 +273,6 @@ function Notch() {
         className={styles["agent-notch-panel"]}
         inert={!shown}
         aria-label="Project agents"
-        data-tick="0"
       >
         <div
           className={styles["agent-notch-scroll"]}
