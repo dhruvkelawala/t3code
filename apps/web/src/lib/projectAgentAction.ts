@@ -17,6 +17,7 @@ export function projectAgentAction(
   if (
     !canSet ||
     !project ||
+    project.agentThreadId === undefined ||
     project.environmentId !== thread.environmentId ||
     project.id !== thread.projectId ||
     !isProjectAgentThread(thread)
