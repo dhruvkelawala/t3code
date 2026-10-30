@@ -1,0 +1,371 @@
+.agent-notch {
+  --agent-notch-glass: light-dark(rgb(0 0 0 / 5.5%), rgb(255 255 255 / 12%));
+  --agent-notch-glass-end: light-dark(rgb(0 0 0 / 4.5%), rgb(255 255 255 / 10.5%));
+  --agent-notch-glass-edge: light-dark(rgb(0 0 0 / 9%), rgb(255 255 255 / 18%));
+  --agent-notch-glass-stroke: light-dark(rgb(0 0 0 / 7%), rgb(255 255 255 / 10%));
+  position: fixed;
+  top: 50%;
+  z-index: 30;
+  height: 0;
+  scale: var(--agent-notch-scale);
+  transform-origin: 0 0;
+  color: var(--foreground);
+  transition:
+    opacity var(--agent-notch-peek-duration) cubic-bezier(0.16, 1, 0.3, 1),
+    visibility var(--agent-notch-peek-duration);
+}
+.agent-notch[data-concealed="true"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.agent-notch-handle {
+  position: absolute;
+  top: -50px;
+  left: -4px;
+  z-index: 1;
+  width: 18px;
+  height: 100px;
+  cursor: pointer;
+  outline: none;
+}
+.agent-notch-handle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.agent-notch-attention {
+  position: absolute;
+  top: calc(50% - 2px);
+  left: 6.5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+.agent-notch-outline {
+  clip-path: inset(-100vmax -100vmax -100vmax 0);
+  pointer-events: none;
+}
+.agent-notch-surface,
+.agent-notch-edge {
+  position: absolute;
+  top: calc(var(--agent-notch-height) / -2);
+  left: 0;
+  width: 62px;
+  height: var(--agent-notch-height);
+  pointer-events: none;
+}
+.agent-notch-surface {
+  width: 11px;
+  background: linear-gradient(90deg, var(--agent-notch-glass), var(--agent-notch-glass-end));
+  backdrop-filter: blur(18px) saturate(140%);
+  clip-path: var(--agent-notch-tab);
+  transition:
+    clip-path var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
+    width var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
+}
+.agent-notch-edge {
+  overflow: visible;
+  fill: none;
+  stroke-width: 1px;
+}
+.agent-notch-edge path {
+  transition: d var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
+}
+.agent-notch[data-open="true"] .agent-notch-surface {
+  width: 62px;
+  clip-path: var(--agent-notch-bulge);
+}
+.agent-notch-stroke {
+  d: var(--agent-notch-tab-edge);
+  stroke: var(--agent-notch-glass-stroke);
+}
+.agent-notch-highlight {
+  d: var(--agent-notch-tab-highlight);
+  stroke: var(--agent-notch-glass-edge);
+  stroke-width: 1.5px;
+}
+.agent-notch[data-open="true"] .agent-notch-stroke {
+  d: var(--agent-notch-bulge-edge);
+}
+.agent-notch[data-open="true"] .agent-notch-highlight {
+  d: var(--agent-notch-bulge-highlight);
+}
+.agent-notch[data-open="true"] :is(.agent-notch-surface, .agent-notch-edge path) {
+  transition-duration: var(--agent-notch-unfold-duration);
+  /* A spring that overshoots by about 4% and settles. */
+  transition-timing-function: linear(
+    0,
+    0.0307,
+    0.1077,
+    0.2118,
+    0.3285,
+    0.4471,
+    0.56,
+    0.6626,
+    0.7523,
+    0.8278,
+    0.8894,
+    0.9379,
+    0.9746,
+    1.0012,
+    1.0193,
+    1.0305,
+    1.0364,
+    1.0384,
+    1.0375,
+    1.0347,
+    1.0308,
+    1.0264,
+    1.0218,
+    1.0174,
+    1.0134,
+    1.0099,
+    1.007,
+    1.0045,
+    1
+  );
+}
+.agent-notch-panel {
+  position: absolute;
+  top: calc(var(--agent-notch-height) / -2 + 12px);
+  left: 0;
+  width: 60px;
+  padding-block: 8px;
+  /* The notch is scaled as a whole; dividing keeps the chosen corner the same on screen at every size. */
+  border-radius: calc(16px / var(--agent-notch-scale));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
+    visibility var(--agent-notch-fold-duration);
+}
+.agent-notch[data-corner="3xl"] .agent-notch-panel {
+  border-radius: calc(20px / var(--agent-notch-scale));
+}
+.agent-notch[data-open="true"] .agent-notch-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  /* Visibility flips at once on open: a hidden→visible transition stays hidden on its first frame, so keyboard focus would miss the agents. */
+  transition-duration: 0s, 0s;
+}
+.agent-notch-scroll {
+  display: flex;
+  max-height: calc(100dvh / var(--agent-notch-scale) - 140px);
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.agent-notch-scroll[data-scroll="true"] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--foreground) 10px,
+    var(--foreground) calc(100% - 10px),
+    transparent
+  );
+}
+.agent-notch-item {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  width: 60px;
+  height: 76px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  outline: none;
+  opacity: 0;
+  translate: -6px 0;
+  scale: 0.9;
+  transition:
+    opacity var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
+    translate var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
+    scale var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
+}
+/* Each agent trails the one above it, so the column arrives with the shape rather than before it. */
+.agent-notch[data-open="true"] .agent-notch-item {
+  opacity: 1;
+  translate: none;
+  scale: none;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(
+    var(--agent-notch-fold-duration) / 4 + var(--agent-notch-index, 0) *
+      var(--agent-notch-fold-duration) / 6
+  );
+}
+.agent-notch-disc {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+}
+.agent-notch-item:is(:hover, :focus) .agent-notch-disc {
+  background: var(--sidebar-row-hover);
+}
+.agent-notch-item[data-selected="true"] .agent-notch-disc {
+  background: var(--sidebar-row-selected);
+}
+.agent-notch-item:focus-visible .agent-notch-disc {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.agent-notch-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  fill: none;
+  rotate: -90deg;
+}
+.agent-notch-track {
+  stroke: color-mix(in srgb, var(--sidebar-foreground) 16%, transparent);
+  stroke-width: 5.8px;
+}
+.agent-notch-arc {
+  stroke: currentColor;
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+.agent-notch-label {
+  color: var(--sidebar-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+.agent-notch-item[data-offline="true"] {
+  cursor: default;
+}
+.agent-notch-item[data-offline="true"] :is(.agent-notch-ring, .agent-notch-label) {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+/* The card glides between agents on a spring (response 0.5 s, damping 0.86) and cross-fades its content. */
+.agent-notch-card {
+  --agent-notch-glide: linear(
+    0,
+    0.0412,
+    0.1377,
+    0.2592,
+    0.3859,
+    0.5062,
+    0.6136,
+    0.7054,
+    0.7812,
+    0.8419,
+    0.8892,
+    0.9251,
+    0.9517,
+    0.9709,
+    0.9842,
+    0.9932,
+    0.9989,
+    1.0024,
+    1.0042,
+    1.0049,
+    1
+  );
+  position: absolute;
+  top: 0;
+  left: 99px;
+  width: 256px;
+  translate: 0 var(--agent-notch-card-top);
+  transform: translateX(-4px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--agent-notch-card-fade) cubic-bezier(0.4, 0, 1, 1),
+    transform var(--agent-notch-card-fade) cubic-bezier(0.4, 0, 1, 1),
+    visibility var(--agent-notch-card-fade);
+}
+.agent-notch-card[data-visible="true"] {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
+    transform var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s;
+}
+.agent-notch-card[data-visible="true"][data-glide="true"] {
+  transition:
+    opacity var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
+    transform var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s,
+    translate var(--agent-notch-glide-duration) var(--agent-notch-glide);
+}
+.agent-notch-card-body {
+  position: relative;
+  height: var(--agent-notch-card-height);
+  overflow: hidden;
+}
+.agent-notch-card[data-glide="true"] .agent-notch-card-body {
+  transition: height var(--agent-notch-glide-duration) var(--agent-notch-glide);
+}
+.agent-notch-card-layer {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  padding: 12px;
+  opacity: 0;
+  transition: opacity var(--agent-notch-card-fade) ease-in-out;
+}
+.agent-notch-card-layer[data-current="true"] {
+  opacity: 1;
+}
+.agent-notch-tail {
+  position: absolute;
+  top: var(--agent-notch-tail-top);
+  left: -28px;
+  z-index: 1;
+  width: 29.5px;
+  height: 32px;
+  overflow: visible;
+}
+.agent-notch-card[data-glide="true"] .agent-notch-tail {
+  transition: top var(--agent-notch-glide-duration) var(--agent-notch-glide);
+}
+.agent-notch-tail-fill {
+  fill: var(--popover);
+}
+.agent-notch-tail-edge {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1px;
+}
+/* Closing, the card fades first and then the notch folds back into the edge. */
+.agent-notch[data-open="false"]
+  :is(.agent-notch-surface, .agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
+  transition-delay: var(--agent-notch-card-fade);
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-notch-surface,
+  .agent-notch-edge path,
+  .agent-notch[data-open="true"] :is(.agent-notch-surface, .agent-notch-edge path) {
+    transition: none;
+  }
+  .agent-notch-item {
+    translate: none;
+    scale: none;
+  }
+  .agent-notch-card,
+  .agent-notch-card[data-visible="true"],
+  .agent-notch-card[data-visible="true"][data-glide="true"] {
+    transform: none;
+    transition-property: opacity, visibility;
+  }
+  .agent-notch-card-body,
+  .agent-notch-tail {
+    transition: none;
+  }
+}
