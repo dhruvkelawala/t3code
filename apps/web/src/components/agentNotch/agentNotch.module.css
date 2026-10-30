@@ -248,7 +248,6 @@
   opacity: 0.4;
   filter: grayscale(1);
 }
-/* The card glides between agents on a spring (response 0.5 s, damping 0.86) and cross-fades its content. */
 .agent-notch-card {
   --agent-notch-glide: linear(
     0,
@@ -312,16 +311,11 @@
 .agent-notch-card[data-glide="true"] .agent-notch-card-body {
   transition: height var(--agent-notch-glide-duration) var(--agent-notch-glide);
 }
-.agent-notch-card-layer {
+.agent-notch-card-content {
   position: absolute;
   inset-inline: 0;
   top: 0;
   padding: 12px;
-  opacity: 0;
-  transition: opacity var(--agent-notch-card-fade) ease-in-out;
-}
-.agent-notch-card-layer[data-current="true"] {
-  opacity: 1;
 }
 .agent-notch-tail {
   position: absolute;
@@ -364,8 +358,8 @@
     transform: none;
     transition-property: opacity, visibility;
   }
-  .agent-notch-card-body,
-  .agent-notch-tail {
+  .agent-notch-card[data-glide="true"] .agent-notch-card-body,
+  .agent-notch-card[data-glide="true"] .agent-notch-tail {
     transition: none;
   }
 }

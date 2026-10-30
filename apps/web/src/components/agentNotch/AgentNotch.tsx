@@ -51,7 +51,7 @@ function Notch() {
   const rovingIndex = Math.min(focusedIndex, Math.max(0, items.length - 1));
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const cardBody = useRef<HTMLDivElement>(null);
+  const cardContent = useRef<HTMLDivElement>(null);
   const handle = useRef<HTMLButtonElement>(null);
   const focusOnOpen = useRef(false);
   const restoringTabFocus = useRef(false);
@@ -94,12 +94,11 @@ function Notch() {
     const disc = item.firstElementChild?.getBoundingClientRect();
     const top = root.current?.getBoundingClientRect().top ?? 0;
     const y = disc ? (disc.top + disc.height / 2 - top) / scale : 0;
-    setCard((current) => ({
+    setCard({
       key,
-      previous: current && current.key !== key ? current.key : (current?.previous ?? null),
       y,
       glide: active !== null && active !== key,
-    }));
+    });
     setActive(key);
   };
   const openFromKeyboard = () => {
@@ -127,12 +126,11 @@ function Notch() {
   }, [corner, scale]);
 
   const cardKey = card?.key;
+  const cardItem = items.find((item) => item.key === cardKey);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- measures the card's current content so the card can resize as it glides between agents
   useLayoutEffect(() => {
-    const element = [...(cardBody.current?.children ?? [])].find(
-      (layer) => layer instanceof HTMLElement && layer.dataset.cardKey === cardKey,
-    );
-    if (!(element instanceof HTMLElement)) return;
+    const element = cardContent.current;
+    if (!cardKey || !element) return;
     return observeResize(element, () => setCardHeight(element.offsetHeight));
   }, [cardKey]);
 
@@ -217,9 +215,8 @@ function Notch() {
           "--agent-notch-unfold-duration": `${duration * 2}ms`,
           "--agent-notch-fold-duration": `${duration}ms`,
           "--agent-notch-peek-duration": `${Math.round((duration * 120) / 180)}ms`,
-          // The card fades over 160 ms and glides over 500 ms at a 180 ms panel duration.
           "--agent-notch-card-fade": `${Math.round((duration * 160) / 180)}ms`,
-          "--agent-notch-glide-duration": `${Math.round((duration * 500) / 180)}ms`,
+          "--agent-notch-glide-duration": `${duration}ms`,
         } as CSSProperties
       }
       onPointerEnter={enter}
@@ -394,34 +391,23 @@ function Notch() {
           <path d={TAIL_EDGE} className={styles["agent-notch-tail-edge"]} />
         </svg>
         <div
-          ref={cardBody}
           className={cn(
             styles["agent-notch-card-body"],
             "rounded-lg border bg-popover text-popover-foreground",
           )}
         >
-          {[card?.previous, card?.key].map((key) => {
-            if (!key) return null;
-            const item = items.find((candidate) => candidate.key === key);
-            return (
-              <div
-                key={key}
-                data-card-key={key}
-                className={styles["agent-notch-card-layer"]}
-                data-current={key === card?.key}
-                aria-hidden={key !== card?.key}
-              >
-                {key === EMPTY_CARD ? (
-                  <p className="text-xs">
-                    No project agents yet. Pin a thread, or choose{" "}
-                    <strong>Make project agent</strong> from a thread’s menu.
-                  </p>
-                ) : item ? (
-                  <AgentNotchCard item={item} />
-                ) : null}
-              </div>
-            );
-          })}
+          {cardKey && (
+            <div key={cardKey} ref={cardContent} className={styles["agent-notch-card-content"]}>
+              {cardKey === EMPTY_CARD ? (
+                <p className="text-xs">
+                  No project agents yet. Pin a thread, or choose <strong>Make project agent</strong>{" "}
+                  from a thread’s menu.
+                </p>
+              ) : cardItem ? (
+                <AgentNotchCard item={cardItem} />
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -471,7 +457,7 @@ function focusFirstButton(element: HTMLElement | null) {
   element?.querySelector<HTMLButtonElement>("button")?.focus();
 }
 
-type NotchCardState = { key: string; previous: string | null; y: number; glide: boolean };
+type NotchCardState = { key: string; y: number; glide: boolean };
 
 const EMPTY_CARD = "empty";
 
