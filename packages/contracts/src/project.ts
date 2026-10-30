@@ -151,6 +151,7 @@ export const ReceivedProjectIcon = ForwardCompatibleUnion(projectIconMembers, "k
 
 export const Project = Schema.Struct({
   id: ProjectId,
+  agentThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
@@ -183,6 +184,11 @@ export const ProjectCreatePayload = Schema.Struct({
 export type ProjectCreatePayload = typeof ProjectCreatePayload.Type;
 
 export const ProjectUpdatePayload = Schema.Struct({
+  agentThreadId: Schema.optional(
+    Schema.NullOr(ThreadId).annotate({
+      description: "An active top-level thread in this project; null clears the project agent.",
+    }),
+  ),
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
@@ -193,6 +199,25 @@ export const ProjectUpdatePayload = Schema.Struct({
   scripts: Schema.optional(Schema.Array(ProjectScript)),
 });
 export type ProjectUpdatePayload = typeof ProjectUpdatePayload.Type;
+
+export const ProjectSetAgentThreadInput = Schema.Struct({
+  commandId: CommandId,
+  projectId: ProjectId,
+  agentThreadId: Schema.NullOr(ThreadId),
+});
+
+export class ProjectAgentThreadError extends Schema.TaggedError<ProjectAgentThreadError>()(
+  "ProjectAgentThreadError",
+  {
+    projectId: ProjectId,
+    threadId: ThreadId,
+    reason: Schema.Literals(["missing", "different-project", "not-top-level", "archived"]),
+  },
+) {
+  override get message(): string {
+    return `Thread '${this.threadId}' cannot be the agent for project '${this.projectId}': ${this.reason}.`;
+  }
+}
 
 export const ProjectMutation = Schema.Union([
   Schema.Struct({

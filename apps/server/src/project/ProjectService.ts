@@ -2,6 +2,7 @@ import {
   CommandId,
   type OrchestrationProjectShell,
   ProjectId,
+  type ProjectAgentThreadError,
   type Project,
   type ProjectCreatePayload,
   type ProjectUpdatePayload,
@@ -106,6 +107,7 @@ export class ProjectOperationError extends Schema.TaggedError<ProjectOperationEr
 }
 
 export type ProjectServiceError =
+  | ProjectAgentThreadError
   | ProjectNotFoundError
   | ProjectConflictError
   | ProjectNotEmptyError
@@ -170,6 +172,7 @@ export const make = Effect.gen(function* () {
     enrichment: ProjectEnrichmentService.ProjectEnrichment | null,
   ): Project => ({
     id: row.projectId,
+    agentThreadId: row.agentThreadId,
     title: row.title,
     workspaceRoot: row.workspaceRoot,
     repositoryIdentity: enrichment?.repositoryIdentity ?? null,
@@ -243,7 +246,17 @@ export const make = Effect.gen(function* () {
         .pipe(Effect.mapError(dispatchError));
       const planned = planProjectCommand({
         command,
-        state: { project, workspaceOwner },
+        state: {
+          project,
+          workspaceOwner,
+          ...(command.type === "project.meta.update" && command.agentThreadId != null
+            ? {
+                agentThread: yield* threadProjections
+                  .getThreadShell(command.agentThreadId)
+                  .pipe(Effect.mapError(dispatchError)),
+              }
+            : {}),
+        },
         eventId,
         now,
       });
@@ -265,14 +278,17 @@ export const make = Effect.gen(function* () {
         error: encodeProjectCommandRejection(planned.failure),
       });
     });
-    const receipt = yield* projectLocks
-      .withLock(
-        projectId,
-        workspaceRoot === undefined
-          ? planAndCommit
-          : workspaceLocks.withLock(workspaceRoot, planAndCommit),
-      )
-      .pipe(Effect.mapError(dispatchError));
+    const locked = projectLocks.withLock(
+      projectId,
+      workspaceRoot === undefined
+        ? planAndCommit
+        : workspaceLocks.withLock(workspaceRoot, planAndCommit),
+    );
+    const receipt = yield* (
+      command.type === "project.meta.update" && command.agentThreadId != null
+        ? threadCommands.withLock(command.agentThreadId, locked)
+        : locked
+    ).pipe(Effect.mapError(dispatchError));
     if (receipt.projectId !== projectId || receipt.commandType !== command.type) {
       return yield* dispatchError(
         `Command ${command.commandId} was already used by ${receipt.commandType} for ${receipt.projectId}.`,
@@ -282,6 +298,8 @@ export const make = Effect.gen(function* () {
     if (receipt.status === "accepted") return;
     const rejection = Option.getOrUndefined(decodeProjectCommandRejection(receipt.error));
     switch (rejection?._tag) {
+      case "ProjectAgentThreadError":
+        return yield* rejection;
       case "ProjectWorkspaceConflictError":
         return yield* new ProjectConflictError({
           projectId,
@@ -374,6 +392,7 @@ export const make = Effect.gen(function* () {
         type: "project.meta.update",
         commandId: input.commandId,
         projectId: input.projectId,
+        ...(input.agentThreadId === undefined ? {} : { agentThreadId: input.agentThreadId }),
         ...(input.title === undefined ? {} : { title: input.title }),
         ...(workspaceRoot === previousRoot ? {} : { workspaceRoot }),
         ...(input.defaultModelSelection === undefined

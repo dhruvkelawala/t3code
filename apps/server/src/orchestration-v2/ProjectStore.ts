@@ -7,6 +7,7 @@ import {
   ProjectId,
   ProjectScript,
   ThreadEnvMode,
+  ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
@@ -31,6 +32,7 @@ export class ProjectStoreV2Error extends Schema.TaggedError<ProjectStoreV2Error>
 
 export const ProjectRow = Schema.Struct({
   projectId: ProjectId,
+  agentThreadId: Schema.NullOr(ThreadId),
   title: Schema.String,
   workspaceRoot: Schema.String,
   defaultModelSelection: Schema.NullOr(ModelSelection),
@@ -56,6 +58,7 @@ const ProjectDbRow = Schema.Struct({
 function toShell(row: ProjectRow): OrchestrationProjectShell {
   return {
     id: row.projectId,
+    agentThreadId: row.agentThreadId,
     title: row.title,
     workspaceRoot: row.workspaceRoot,
     repositoryIdentity: null,
@@ -81,6 +84,7 @@ export class ProjectStoreV2 extends Context.Service<
     ) => Effect.Effect<Option.Option<ProjectRow>, ProjectStoreV2Error>;
     readonly list: (options?: {
       readonly projectIds?: ReadonlyArray<ProjectId>;
+      readonly agentThreadId?: ThreadId;
       readonly includeDeleted?: boolean;
     }) => Effect.Effect<ReadonlyArray<ProjectRow>, ProjectStoreV2Error>;
     /** Workspace roots match by exact string; callers normalize before asking. */
@@ -99,11 +103,19 @@ export class ProjectStoreV2 extends Context.Service<
 /** @public */
 export const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  // Fork-only schema stays out of numbered migrations so stock T3 can open the same database.
+  const columns = yield* sql<{ readonly name: string }>`PRAGMA table_info(projection_projects)`;
+  if (!columns.some(({ name }) => name === "agent_thread_id")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN agent_thread_id TEXT`;
+  }
+  yield* sql`CREATE INDEX IF NOT EXISTS projection_projects_agent_thread_idx ON projection_projects(agent_thread_id) WHERE agent_thread_id IS NOT NULL`;
+
   const encodeRow = Schema.encodeEffect(ProjectDbRow);
 
   const selectRows = SqlSchema.findAll({
     Request: Schema.Struct({
       projectId: Schema.optional(ProjectId),
+      agentThreadId: Schema.optional(ThreadId),
       projectIds: Schema.optional(Schema.Array(ProjectId)),
       workspaceRoot: Schema.optional(Schema.String),
       includeDeleted: Schema.Boolean,
@@ -112,6 +124,7 @@ export const make = Effect.gen(function* () {
     execute: (request) => sql`
       SELECT
         project_id AS "projectId",
+        agent_thread_id AS "agentThreadId",
         title,
         workspace_root AS "workspaceRoot",
         default_model_selection_json AS "defaultModelSelection",
@@ -126,6 +139,9 @@ export const make = Effect.gen(function* () {
       FROM projection_projects
       WHERE ${sql.and([
         ...(request.includeDeleted ? [] : [sql`deleted_at IS NULL`]),
+        ...(request.agentThreadId === undefined
+          ? []
+          : [sql`agent_thread_id = ${request.agentThreadId}`]),
         ...(request.projectId === undefined ? [] : [sql`project_id = ${request.projectId}`]),
         ...(request.projectIds === undefined ? [] : [sql.in("project_id", request.projectIds)]),
         ...(request.workspaceRoot === undefined
@@ -142,6 +158,7 @@ export const make = Effect.gen(function* () {
         (encoded) => sql`
           INSERT INTO projection_projects (
             project_id,
+            agent_thread_id,
             title,
             workspace_root,
             default_model_selection_json,
@@ -156,6 +173,7 @@ export const make = Effect.gen(function* () {
           )
           VALUES (
             ${encoded.projectId},
+            ${encoded.agentThreadId},
             ${encoded.title},
             ${encoded.workspaceRoot},
             ${encoded.defaultModelSelection},
@@ -170,6 +188,7 @@ export const make = Effect.gen(function* () {
           )
           ON CONFLICT (project_id)
           DO UPDATE SET
+            agent_thread_id = excluded.agent_thread_id,
             title = excluded.title,
             workspace_root = excluded.workspace_root,
             default_model_selection_json = excluded.default_model_selection_json,
@@ -200,6 +219,7 @@ export const make = Effect.gen(function* () {
   const list: ProjectStoreV2["Service"]["list"] = (options) =>
     selectRows({
       ...(options?.projectIds === undefined ? {} : { projectIds: options.projectIds }),
+      ...(options?.agentThreadId === undefined ? {} : { agentThreadId: options.agentThreadId }),
       includeDeleted: options?.includeDeleted === true,
     }).pipe(NodeSqliteClient.readOnly, mapError("list"));
 
@@ -218,6 +238,7 @@ export const make = Effect.gen(function* () {
         const payload = event.payload;
         return yield* upsertRow({
           projectId: payload.projectId,
+          agentThreadId: null,
           title: payload.title,
           workspaceRoot: payload.workspaceRoot,
           defaultModelSelection: payload.defaultModelSelection,
@@ -244,6 +265,7 @@ export const make = Effect.gen(function* () {
       const payload = event.payload;
       yield* upsertRow({
         ...row,
+        ...(payload.agentThreadId === undefined ? {} : { agentThreadId: payload.agentThreadId }),
         ...(payload.title === undefined ? {} : { title: payload.title }),
         ...(payload.workspaceRoot === undefined ? {} : { workspaceRoot: payload.workspaceRoot }),
         ...(payload.defaultModelSelection === undefined
