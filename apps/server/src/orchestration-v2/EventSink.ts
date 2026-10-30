@@ -1045,11 +1045,7 @@ const layerBase: Layer.Layer<
 /** Share the worker's outbox instance: enqueue wakeups are in-memory. */
 export const layerFromStores = layerBase;
 
-export const layer: Layer.Layer<
-  EventSinkV2,
-  never,
-  EventStore.EventStoreV2 | ProjectionStore.ProjectionStoreV2 | SqlClient.SqlClient
-> = layerBase.pipe(
+export const layer = layerBase.pipe(
   Layer.provide(
     Layer.mergeAll(
       CommandReceiptStore.layer,

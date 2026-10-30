@@ -103,6 +103,13 @@ export class ProjectStoreV2 extends Context.Service<
 /** @public */
 export const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  // Fork-only schema stays out of numbered migrations so stock T3 can open the same database.
+  const columns = yield* sql<{ readonly name: string }>`PRAGMA table_info(projection_projects)`;
+  if (!columns.some(({ name }) => name === "agent_thread_id")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN agent_thread_id TEXT`;
+  }
+  yield* sql`CREATE INDEX IF NOT EXISTS projection_projects_agent_thread_idx ON projection_projects(agent_thread_id) WHERE agent_thread_id IS NOT NULL`;
+
   const encodeRow = Schema.encodeEffect(ProjectDbRow);
 
   const selectRows = SqlSchema.findAll({
