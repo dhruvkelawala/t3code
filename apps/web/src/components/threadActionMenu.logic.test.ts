@@ -32,10 +32,15 @@ describe("buildThreadActionMenuItems", () => {
       const items = buildThreadActionMenuItems({
         ...baseState,
         canOperate: false,
+        projectAgentAction: {
+          id: reversed ? "remove-project-agent" : "make-project-agent",
+          label: "Project agent",
+        },
         isPinned: reversed,
         isSettled: reversed,
         isSnoozed: reversed,
       });
+      expect(items.some((item) => item.id.endsWith("-project-agent"))).toBe(false);
       const expected = reversed
         ? [
             "unpin",
