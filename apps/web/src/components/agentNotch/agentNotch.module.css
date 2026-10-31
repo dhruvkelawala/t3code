@@ -58,8 +58,6 @@
 .agent-notch-surface {
   background: linear-gradient(90deg, var(--agent-notch-glass), var(--agent-notch-glass-end));
   backdrop-filter: blur(18px) saturate(140%);
-  clip-path: var(--agent-notch-tab);
-  transition: clip-path var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
 }
 .agent-notch-edge {
   overflow: visible;
@@ -69,8 +67,13 @@
 .agent-notch-edge path {
   transition: d var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
 }
-.agent-notch[data-open="true"] .agent-notch-surface {
-  clip-path: var(--agent-notch-bulge);
+/* Animating the SVG clipping path keeps backdrop blur in sync with the outline in Electron. */
+.agent-notch-mask {
+  d: var(--agent-notch-tab);
+  fill: currentColor;
+}
+.agent-notch[data-open="true"] .agent-notch-mask {
+  d: var(--agent-notch-bulge);
 }
 .agent-notch-stroke {
   d: var(--agent-notch-tab-edge);
@@ -87,7 +90,7 @@
 .agent-notch[data-open="true"] .agent-notch-highlight {
   d: var(--agent-notch-bulge-highlight);
 }
-.agent-notch[data-open="true"] :is(.agent-notch-surface, .agent-notch-edge path) {
+.agent-notch[data-open="true"] .agent-notch-edge path {
   transition-duration: var(--agent-notch-unfold-duration);
   /* A spring that overshoots by about 4% and settles. */
   transition-timing-function: linear(
@@ -334,14 +337,12 @@
   stroke-width: 1px;
 }
 /* Closing, the card fades first and then the notch folds back into the edge. */
-.agent-notch[data-open="false"]
-  :is(.agent-notch-surface, .agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
+.agent-notch[data-open="false"] :is(.agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
   transition-delay: var(--agent-notch-card-fade);
 }
 @media (prefers-reduced-motion: reduce) {
-  .agent-notch-surface,
   .agent-notch-edge path,
-  .agent-notch[data-open="true"] :is(.agent-notch-surface, .agent-notch-edge path) {
+  .agent-notch[data-open="true"] .agent-notch-edge path {
     transition: none;
   }
   .agent-notch-item {

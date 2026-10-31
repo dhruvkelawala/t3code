@@ -1,7 +1,7 @@
 import { useLocation, useRouter } from "@tanstack/react-router";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { SparklesIcon } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { buildThreadRouteParams, isThreadRoutePathname } from "../../threadRoutes";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useProjects } from "../../state/entities";
@@ -28,6 +28,7 @@ export function AgentNotch() {
 }
 
 function Notch() {
+  const clipId = `agent-notch-${useId().replace(/[^\w-]/gu, "")}`;
   const concealed = useTimelinePeek();
   const { state } = useSidebar();
   const items = useAgentNotchProjects();
@@ -265,8 +266,13 @@ function Notch() {
         {attention && <span className={cn(styles["agent-notch-attention"], attention.dotClass)} />}
       </button>
       <div className={styles["agent-notch-outline"]}>
-        <div className={styles["agent-notch-surface"]} />
+        <div className={styles["agent-notch-surface"]} style={{ clipPath: `url(#${clipId})` }} />
         <svg aria-hidden="true" className={styles["agent-notch-edge"]}>
+          <defs>
+            <clipPath id={clipId}>
+              <path className={styles["agent-notch-mask"]} />
+            </clipPath>
+          </defs>
           <path className={styles["agent-notch-highlight"]} />
           <path className={styles["agent-notch-stroke"]} />
         </svg>
