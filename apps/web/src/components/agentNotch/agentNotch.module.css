@@ -92,38 +92,7 @@
 }
 .agent-notch[data-open="true"] .agent-notch-edge path {
   transition-duration: var(--agent-notch-unfold-duration);
-  /* A spring that overshoots by about 4% and settles. */
-  transition-timing-function: linear(
-    0,
-    0.0307,
-    0.1077,
-    0.2118,
-    0.3285,
-    0.4471,
-    0.56,
-    0.6626,
-    0.7523,
-    0.8278,
-    0.8894,
-    0.9379,
-    0.9746,
-    1.0012,
-    1.0193,
-    1.0305,
-    1.0364,
-    1.0384,
-    1.0375,
-    1.0347,
-    1.0308,
-    1.0264,
-    1.0218,
-    1.0174,
-    1.0134,
-    1.0099,
-    1.007,
-    1.0045,
-    1
-  );
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .agent-notch-panel {
   position: absolute;
