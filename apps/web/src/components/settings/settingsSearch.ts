@@ -444,6 +444,24 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["hide fold running monitoring threads inbox sidebar shelf"],
   },
   {
+    id: "agent-notch",
+    title: "Agent notch",
+    to: "/settings/labs",
+    searchTerms: ["project agents sidebar tab sessions"],
+  },
+  {
+    id: "agent-notch-size",
+    title: "Notch size",
+    to: "/settings/labs",
+    searchTerms: ["agent small medium large scale"],
+  },
+  {
+    id: "agent-notch-corner",
+    title: "Notch corners",
+    to: "/settings/labs",
+    searchTerms: ["agent rounded radius 2xl 3xl"],
+  },
+  {
     id: "boring-sidebar",
     title: "Boring sidebar (group by project)",
     to: "/settings/labs",

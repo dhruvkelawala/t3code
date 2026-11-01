@@ -94,6 +94,7 @@ import { TimelineSystemDivider } from "./TimelineSystemDivider";
 
 import { forwardWheelToTimeline } from "./timelineMinimapWheel";
 import { TimelineMinimap } from "./TimelineMinimap";
+import { useAgentNotchActive, useTimelinePeek } from "../agentNotch/useTimelinePeek";
 import {
   type TimelineRowSharedState,
   type TimelineRowActivityState,
@@ -698,6 +699,8 @@ const ConversationTimeline = memo(function ConversationTimeline({
   // Run status/timestamps change per stream event; keep them out of shared row context.
   const runs = useStableHandoffRuns(runsProp);
   const minimapItems = deriveTimelineMinimapItems(rows);
+  const notchOwnsEdge = useAgentNotchActive();
+  const timelinePeek = useTimelinePeek();
   const minimapRowIndices = minimapItems.map((item) => item.rowIndex);
   const restoreRowIndex =
     restoringThreadPosition && rememberedPosition?.atEnd === false
@@ -1353,6 +1356,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
               ListFooterComponent={timelineListFooter}
             />
             <TimelineMinimap
+              edge={notchOwnsEdge ? (timelinePeek ? "revealed" : "concealed") : "default"}
               items={minimapItems}
               hasPersistentGutter={minimapHasPersistentGutter}
               hitStripWidth={minimapHitStripWidth}
