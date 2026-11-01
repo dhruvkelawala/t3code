@@ -34,14 +34,6 @@
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
-.agent-notch-attention {
-  position: absolute;
-  top: calc(50% - 2px);
-  left: 6.5px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-}
 .agent-notch-outline {
   clip-path: inset(-100vmax -100vmax -100vmax 0);
   pointer-events: none;
@@ -65,7 +57,9 @@
   stroke-width: 1px;
 }
 .agent-notch-edge path {
-  transition: d var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
+  transition:
+    d var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
+    stroke var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
 }
 /* Animating the SVG clipping path keeps backdrop blur in sync with the outline in Electron. */
 .agent-notch-mask {
@@ -86,6 +80,9 @@
 }
 .agent-notch[data-open="true"] .agent-notch-stroke {
   d: var(--agent-notch-bulge-edge);
+}
+.agent-notch[data-attention="true"][data-open="false"] .agent-notch-stroke {
+  stroke: currentColor;
 }
 .agent-notch[data-open="true"] .agent-notch-highlight {
   d: var(--agent-notch-bulge-highlight);

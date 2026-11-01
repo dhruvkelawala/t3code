@@ -210,6 +210,7 @@ function Notch() {
       data-concealed={concealed}
       data-corner={corner}
       data-card-exit={cardExit}
+      data-attention={attention !== null}
       style={
         {
           left: state === "expanded" ? "var(--sidebar-width)" : "0px",
@@ -280,12 +281,10 @@ function Notch() {
             openFromKeyboard();
           }
         }}
-      >
-        {attention && <span className={cn(styles["agent-notch-attention"], attention.dotClass)} />}
-      </button>
+      />
       <div className={styles["agent-notch-outline"]}>
         <div className={styles["agent-notch-surface"]} style={{ clipPath: `url(#${clipId})` }} />
-        <svg aria-hidden="true" className={styles["agent-notch-edge"]}>
+        <svg aria-hidden="true" className={cn(styles["agent-notch-edge"], attention?.colorClass)}>
           <defs>
             <clipPath id={clipId}>
               <path className={styles["agent-notch-mask"]} />
