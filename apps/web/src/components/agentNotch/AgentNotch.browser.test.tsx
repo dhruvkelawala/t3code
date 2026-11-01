@@ -39,6 +39,44 @@ it("keeps the notch closed when Escape returns focus from outside to the tab", a
   await expect.element(tab).toHaveAttribute("aria-expanded", "false");
 });
 
+it("opens instantly from the keyboard and animates from the pointer", async () => {
+  await page.viewport(1280, 900);
+  useUiStateStore.setState({
+    agentNotchEnabled: true,
+    agentNotchSize: "medium",
+    agentNotchCorner: "2xl",
+  });
+  await updateClientSettings({ panelAnimationDurationMs: 180 });
+  await using screen = await render(
+    <AppAtomRegistryProvider>
+      <SidebarProvider>
+        <button type="button">Outside the notch</button>
+        <AgentNotch />
+      </SidebarProvider>
+    </AppAtomRegistryProvider>,
+  );
+  using _timers = fakeTimers();
+  const outside = screen.getByRole("button", { name: "Outside the notch" });
+  const tab = screen.getByRole("button", { name: "Open agent notch" });
+  await outside.click();
+  await userEvent.tab();
+  await expect.element(tab).toHaveFocus();
+  await expect.element(tab).toHaveAttribute("aria-expanded", "true");
+  expect(tab.element().parentElement?.style.getPropertyValue("--agent-notch-unfold-duration")).toBe(
+    "0ms",
+  );
+
+  await userEvent.keyboard("{Escape}");
+  await expect.element(tab).toHaveAttribute("aria-expanded", "false");
+
+  await userEvent.hover(tab);
+  await act(() => vi.advanceTimersByTime(80));
+  await expect.element(tab).toHaveAttribute("aria-expanded", "true");
+  expect(tab.element().parentElement?.style.getPropertyValue("--agent-notch-unfold-duration")).toBe(
+    "360ms",
+  );
+});
+
 it("keeps its motion while route panels are suppressed after navigation", async () => {
   useUiStateStore.setState({
     agentNotchEnabled: true,

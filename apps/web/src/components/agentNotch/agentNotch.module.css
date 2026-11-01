@@ -178,6 +178,14 @@
   place-items: center;
   border-radius: 50%;
 }
+@media (prefers-reduced-motion: no-preference) {
+  .agent-notch-disc {
+    transition: scale calc(var(--agent-notch-fold-duration) * 0.8) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .agent-notch-item:not([data-offline="true"]):active .agent-notch-disc {
+    scale: 0.97;
+  }
+}
 .agent-notch-item:is(:hover, :focus) .agent-notch-disc {
   background: var(--sidebar-row-hover);
 }
@@ -229,8 +237,8 @@
   visibility: hidden;
   pointer-events: none;
   transition:
-    opacity var(--agent-notch-card-fade) cubic-bezier(0.4, 0, 1, 1),
-    transform var(--agent-notch-card-fade) cubic-bezier(0.4, 0, 1, 1),
+    opacity var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
+    transform var(--agent-notch-card-fade) cubic-bezier(0.16, 1, 0.3, 1),
     visibility var(--agent-notch-card-fade);
 }
 .agent-notch-card[data-visible="true"] {
@@ -287,7 +295,7 @@
 /* Closing with a hover card open, the card fades first and then the notch folds back into the edge. */
 .agent-notch[data-open="false"][data-card-exit="true"]
   :is(.agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
-  transition-delay: var(--agent-notch-card-fade);
+  transition-delay: calc(var(--agent-notch-card-fade) / 2);
 }
 @media (prefers-reduced-motion: reduce) {
   .agent-notch-edge path,

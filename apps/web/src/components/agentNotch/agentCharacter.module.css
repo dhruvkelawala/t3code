@@ -21,10 +21,12 @@
   .character[data-state="working"] .pupil {
     transform: translateX(-0.7px);
   }
-  :global(button:is(:hover, :focus-visible)) .character[data-reactive="true"] .reaction {
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  :global(button:hover) .character[data-reactive="true"] .reaction {
     animation: hello 700ms steps(1) 1;
   }
-  :global(button:is(:hover, :focus-visible)) .character[data-reactive="true"] .blink {
+  :global(button:hover) .character[data-reactive="true"] .blink {
     animation: blink 320ms ease-out 1;
   }
 }

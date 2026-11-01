@@ -45,6 +45,7 @@ function Notch() {
   const [pinned, setPinned] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [cardExit, setCardExit] = useState(false);
+  const [instant, setInstant] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [height, setHeight] = useState(268);
   const [radius, setRadius] = useState(0);
@@ -67,21 +68,24 @@ function Notch() {
       .filter(needsUser),
   );
   const cancelClose = () => clearTimeout(closeTimer.current);
-  const close = useStableCallback((restoreFocus = false) => {
-    clearTimeout(openTimer.current);
-    clearTimeout(closeTimer.current);
-    focusOnOpen.current = false;
-    setOpen(false);
-    setPinned(false);
-    setCardExit(shown && active !== null);
-    setActive(null);
-    if (restoreFocus) {
-      // focus() runs the handle's onFocus synchronously; the flag stops it reopening the notch.
-      restoringTabFocus.current = true;
-      handle.current?.focus();
-      restoringTabFocus.current = false;
-    }
-  });
+  const close = useStableCallback(
+    (restoreFocus: boolean = false, keyboard: boolean = restoreFocus) => {
+      clearTimeout(openTimer.current);
+      clearTimeout(closeTimer.current);
+      focusOnOpen.current = false;
+      setOpen(false);
+      setInstant(keyboard);
+      setPinned(false);
+      setCardExit(shown && active !== null);
+      setActive(null);
+      if (restoreFocus) {
+        // focus() runs the handle's onFocus synchronously; the flag stops it reopening the notch.
+        restoringTabFocus.current = true;
+        handle.current?.focus();
+        restoringTabFocus.current = false;
+      }
+    },
+  );
   const enter = () => {
     cancelClose();
   };
@@ -111,6 +115,7 @@ function Notch() {
       focusFirstButton(panel.current);
     } else {
       focusOnOpen.current = true;
+      setInstant(true);
       setOpen(true);
     }
   };
@@ -177,14 +182,14 @@ function Notch() {
     };
   }, [open, close]);
 
-  const activate = (item: AgentNotchProject) => {
+  const activate = (item: AgentNotchProject, keyboard: boolean) => {
     if (item.offline) return;
     const ref = scopeThreadRef(item.agent.environmentId, item.agent.id);
     useThreadSelectionStore.getState().clearSelection();
     useThreadSelectionStore.getState().setAnchor(scopedThreadKey(ref));
     useUiStateStore.getState().setSidebarProjectScopeKeys([item.projectScopeKey]);
     void router.navigate({ to: "/$environmentId/$threadId", params: buildThreadRouteParams(ref) });
-    close();
+    close(false, keyboard);
   };
   const viewport = window.innerHeight / scale;
   const cardTop = card
@@ -195,7 +200,7 @@ function Notch() {
     : 0;
   const bulge = notchOutline({ ...OPEN, height: height - 2 * OPEN.flare, corner: radius }, height);
   const tab = notchOutline(TAB, height);
-  const duration = Math.min(180, durationMs);
+  const duration = instant ? 0 : Math.min(180, durationMs);
   return (
     <div
       ref={root}
@@ -223,7 +228,10 @@ function Notch() {
           "--agent-notch-glide-duration": `${duration}ms`,
         } as CSSProperties
       }
-      onPointerEnter={enter}
+      onPointerEnter={() => {
+        setInstant(false);
+        enter();
+      }}
       onPointerLeave={leave}
     >
       {projects.map((project) => {
@@ -241,20 +249,27 @@ function Notch() {
         aria-expanded={shown}
         aria-controls="agent-notch-panel"
         onFocus={(event) => {
-          if (!restoringTabFocus.current && !root.current?.contains(event.relatedTarget))
+          if (!restoringTabFocus.current && !root.current?.contains(event.relatedTarget)) {
+            setInstant(event.currentTarget.matches(":focus-visible"));
             setOpen(true);
+          }
         }}
         onBlur={(event) => {
           if (!root.current?.contains(event.relatedTarget)) leave();
         }}
         onPointerEnter={() => {
           enter();
-          if (!open) openTimer.current = setTimeout(() => setOpen(true), 80);
+          if (!open)
+            openTimer.current = setTimeout(() => {
+              setInstant(false);
+              setOpen(true);
+            }, 80);
         }}
         onClick={(event) => {
           if (event.detail === 0) openFromKeyboard();
           else {
             cancelClose();
+            setInstant(false);
             setOpen(true);
             if (open) setPinned(true);
           }
@@ -355,7 +370,7 @@ function Notch() {
                     enter();
                     point(item.key, event.currentTarget);
                   }}
-                  onClick={() => activate(item)}
+                  onClick={(event) => activate(item, event.detail === 0)}
                 >
                   <span className={styles["agent-notch-disc"]}>
                     <SessionRing sessions={summary.active} />
