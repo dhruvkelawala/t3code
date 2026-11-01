@@ -154,18 +154,19 @@
   translate: -6px 0;
   scale: 0.9;
   transition:
-    opacity var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
-    translate var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1),
-    scale var(--agent-notch-fold-duration) cubic-bezier(0.4, 0, 1, 1);
+    opacity calc(var(--agent-notch-fold-duration) / 2) cubic-bezier(0.16, 1, 0.3, 1),
+    translate calc(var(--agent-notch-fold-duration) / 2) cubic-bezier(0.16, 1, 0.3, 1),
+    scale calc(var(--agent-notch-fold-duration) / 2) cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* Each agent trails the one above it, so the column arrives with the shape rather than before it. */
+/* Each agent trails the one above it, capped so long columns still land with the shape. */
 .agent-notch[data-open="true"] .agent-notch-item {
   opacity: 1;
   translate: none;
   scale: none;
+  transition-duration: var(--agent-notch-fold-duration);
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: calc(
-    var(--agent-notch-fold-duration) / 4 + var(--agent-notch-index, 0) *
+    var(--agent-notch-fold-duration) / 4 + min(var(--agent-notch-index, 0), 3) *
       var(--agent-notch-fold-duration) / 6
   );
 }
@@ -217,29 +218,7 @@
   filter: grayscale(1);
 }
 .agent-notch-card {
-  --agent-notch-glide: linear(
-    0,
-    0.0412,
-    0.1377,
-    0.2592,
-    0.3859,
-    0.5062,
-    0.6136,
-    0.7054,
-    0.7812,
-    0.8419,
-    0.8892,
-    0.9251,
-    0.9517,
-    0.9709,
-    0.9842,
-    0.9932,
-    0.9989,
-    1.0024,
-    1.0042,
-    1.0049,
-    1
-  );
+  --agent-notch-glide: cubic-bezier(0.16, 1, 0.3, 1);
   position: absolute;
   top: 0;
   left: 99px;
@@ -305,8 +284,9 @@
   stroke: var(--border);
   stroke-width: 1px;
 }
-/* Closing, the card fades first and then the notch folds back into the edge. */
-.agent-notch[data-open="false"] :is(.agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
+/* Closing with a hover card open, the card fades first and then the notch folds back into the edge. */
+.agent-notch[data-open="false"][data-card-exit="true"]
+  :is(.agent-notch-edge path, .agent-notch-panel, .agent-notch-item) {
   transition-delay: var(--agent-notch-card-fade);
 }
 @media (prefers-reduced-motion: reduce) {

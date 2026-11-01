@@ -8,7 +8,6 @@ import { useProjects } from "../../state/entities";
 import { useThreadFamily } from "../../state/threads";
 import { useUiStateStore } from "../../uiStateStore";
 import { useThreadSelectionStore } from "../../threadSelectionStore";
-import { usePanelAnimationSettings } from "../../panelAnimations";
 import { cn } from "../../lib/utils";
 import { useSidebar } from "../ui/sidebar";
 import { useAgentNotchActive, useTimelinePeek } from "./useTimelinePeek";
@@ -21,6 +20,7 @@ import styles from "./agentNotch.module.css";
 import { observeResize } from "../../lib/observeResize";
 import { useStableCallback } from "../../hooks/useStableCallback";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useClientSettings } from "../../hooks/useSettings";
 
 export function AgentNotch() {
   const active = useAgentNotchActive();
@@ -38,12 +38,13 @@ function Notch() {
   const corner = useUiStateStore((store) => store.agentNotchCorner);
   const pathname = useLocation({ select: (location) => location.pathname });
   const router = useRouter();
-  const animation = usePanelAnimationSettings();
+  const durationMs = useClientSettings((settings) => settings.panelAnimationDurationMs);
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [open, setOpen] = useState(false);
   const shown = open && !concealed;
   const [pinned, setPinned] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  const [cardExit, setCardExit] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [height, setHeight] = useState(268);
   const [radius, setRadius] = useState(0);
@@ -72,6 +73,7 @@ function Notch() {
     focusOnOpen.current = false;
     setOpen(false);
     setPinned(false);
+    setCardExit(shown && active !== null);
     setActive(null);
     if (restoreFocus) {
       // focus() runs the handle's onFocus synchronously; the flag stops it reopening the notch.
@@ -193,7 +195,7 @@ function Notch() {
     : 0;
   const bulge = notchOutline({ ...OPEN, height: height - 2 * OPEN.flare, corner: radius }, height);
   const tab = notchOutline(TAB, height);
-  const duration = animation.active || reducedMotion ? Math.min(180, animation.durationMs) : 0;
+  const duration = Math.min(180, durationMs);
   return (
     <div
       ref={root}
@@ -202,6 +204,7 @@ function Notch() {
       data-open={shown}
       data-concealed={concealed}
       data-corner={corner}
+      data-card-exit={cardExit}
       style={
         {
           left: state === "expanded" ? "var(--sidebar-width)" : "0px",
@@ -359,7 +362,7 @@ function Notch() {
                     <AgentCharacter
                       {...item.character}
                       size={28}
-                      reactive={shown && animation.active}
+                      reactive={shown && duration > 0 && !reducedMotion}
                     />
                   </span>
                   <span

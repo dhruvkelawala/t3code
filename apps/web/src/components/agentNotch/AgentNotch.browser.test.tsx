@@ -3,6 +3,7 @@ import { page, userEvent } from "vite-plus/test/browser";
 
 import { act, fakeTimers, render } from "../../../test/render";
 import { updateClientSettings } from "../../hooks/useSettings";
+import { PanelAnimationSuppressionProvider } from "../../panelAnimations";
 import { AppAtomRegistryProvider } from "../../rpc/atomRegistry";
 import { useUiStateStore } from "../../uiStateStore";
 import { SidebarProvider } from "../ui/sidebar";
@@ -36,4 +37,27 @@ it("keeps the notch closed when Escape returns focus from outside to the tab", a
 
   await expect.element(tab).toHaveFocus();
   await expect.element(tab).toHaveAttribute("aria-expanded", "false");
+});
+
+it("keeps its motion while route panels are suppressed after navigation", async () => {
+  useUiStateStore.setState({
+    agentNotchEnabled: true,
+    agentNotchSize: "medium",
+    agentNotchCorner: "2xl",
+  });
+  await updateClientSettings({ panelAnimationDurationMs: 180 });
+  await using screen = await render(
+    <PanelAnimationSuppressionProvider value={true}>
+      <AppAtomRegistryProvider>
+        <SidebarProvider>
+          <AgentNotch />
+        </SidebarProvider>
+      </AppAtomRegistryProvider>
+    </PanelAnimationSuppressionProvider>,
+  );
+  const tab = screen.getByRole("button", { name: "Open agent notch" });
+  await expect.element(tab).toBeInTheDocument();
+  expect(tab.element().parentElement?.style.getPropertyValue("--agent-notch-fold-duration")).toBe(
+    "180ms",
+  );
 });
