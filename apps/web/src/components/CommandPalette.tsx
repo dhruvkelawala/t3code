@@ -1,3 +1,5 @@
+import { resolveProjectAgent } from "@t3tools/client-runtime/state/projects";
+import { projectAgentAction } from "../lib/projectAgentAction";
 import { threadPullRequestLinkMode } from "@t3tools/client-runtime/thread-pull-request-compatibility";
 import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 
@@ -43,6 +45,7 @@ import {
   AuthSourceControlWriteScope,
   AuthFilesystemReadScope,
   type DesktopWslState,
+  CommandId,
   type EnvironmentId,
   type FilesystemBrowseResult,
   SourceControlProviderKind,
@@ -144,6 +147,7 @@ import {
 import { PULL_REQUESTS_PANEL_REF, useRightPanelStore } from "../rightPanelStore";
 import { getLatestThreadForProject, sortThreads } from "@t3tools/client-runtime/state/thread-sort";
 import {
+  randomUUID,
   cn,
   getLocalFileManagerName,
   isMacPlatform,
@@ -404,6 +408,9 @@ function OpenCommandPaletteDialog(props: {
     setHighlightedItemValue(null);
   }
   const clientSettings = useClientSettings(selectCommandPaletteClientSettings);
+  const setAgentThread = useAtomCommand(projectEnvironment.setAgentThread, {
+    reportFailure: false,
+  });
   const createProject = useAtomCommand(projectEnvironment.create, {
     reportFailure: false,
   });
@@ -447,6 +454,11 @@ function OpenCommandPaletteDialog(props: {
   );
   const canShareActiveThreadWithGuest = useAtomValue(
     canShareWithGuestAtom(activeThread?.environmentId ?? ("" as EnvironmentId)),
+  );
+  const canSetProjectAgent = useAtomValue(
+    projectEnvironment.setAgentThread.permissionAtom(
+      activeThread?.environmentId ?? ("" as EnvironmentId),
+    ),
   );
   const activeThreadReferenceCopyTarget =
     referenceThreadRef === null || (pathname === "/pull-requests" && !openPanelPullRequestUrl)
@@ -1320,6 +1332,36 @@ function OpenCommandPaletteDialog(props: {
       icon: <PullRequestGlyph.link className={ITEM_ICON_CLASS} />,
       run: async () => {
         useRightPanelStore.getState().open(threadRef, "pull-requests");
+      },
+    });
+  }
+
+  const agentProject = activeThread
+    ? projectByKey.get(`${activeThread.environmentId}:${activeThread.projectId}`)
+    : null;
+  const agentAction = activeThread
+    ? projectAgentAction(agentProject, activeThread, canSetProjectAgent)
+    : null;
+  if (activeThread && agentAction) {
+    const thread = activeThread;
+    const agent = agentProject ? resolveProjectAgent(agentProject, threads) : null;
+    actionItems.push({
+      kind: "action",
+      value: `action:${agentAction.id}`,
+      description: agent ? `Current agent: ${agent.title}` : "No project agent",
+      title: agentAction.label,
+      searchTerms: ["project", "agent", "hub"],
+      icon: <MessageSquareIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        const result = await setAgentThread({
+          environmentId: thread.environmentId,
+          input: {
+            commandId: CommandId.make(randomUUID()),
+            projectId: thread.projectId,
+            agentThreadId: agentAction.id === "make-project-agent" ? thread.id : null,
+          },
+        });
+        if (result._tag === "Failure") throw squashAtomCommandFailure(result);
       },
     });
   }
