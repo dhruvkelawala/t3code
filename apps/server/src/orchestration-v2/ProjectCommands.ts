@@ -3,11 +3,14 @@ import {
   type EventId,
   MAX_SCRIPT_ID_LENGTH,
   type ModelSelection,
+  type OrchestrationV2AppThread,
+  ProjectAgentThreadError,
   type ProjectIconOverride,
   ProjectId,
   type ProjectScript,
   SCRIPT_RUN_COMMAND_PATTERN,
   type ThreadEnvMode,
+  type ThreadId,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Result from "effect/Result";
@@ -26,6 +29,7 @@ export interface ProjectCreateCommand {
 }
 
 export interface ProjectMetaUpdateCommand {
+  readonly agentThreadId?: ThreadId | null;
   readonly type: "project.meta.update";
   readonly commandId: CommandId;
   readonly projectId: ProjectId;
@@ -84,6 +88,7 @@ export class ProjectWorkspaceConflictError extends Schema.TaggedError<ProjectWor
 }
 
 export const ProjectCommandRejection = Schema.Union([
+  ProjectAgentThreadError,
   ProjectCommandInvariantError,
   ProjectCommandMissingProjectError,
   ProjectWorkspaceConflictError,
@@ -99,6 +104,10 @@ export const decodeProjectCommandRejection = Schema.decodeUnknownOption(
 export interface ProjectCommandState {
   readonly project: ProjectRow | undefined;
   readonly workspaceOwner: ProjectRow | undefined;
+  readonly agentThread?: Pick<
+    OrchestrationV2AppThread,
+    "projectId" | "lineage" | "archivedAt" | "deletedAt"
+  > | null;
 }
 
 const monogramSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
@@ -170,6 +179,28 @@ export function planProjectCommand(input: {
     case "project.meta.update": {
       const project = activeProject;
       if (project === undefined) return missingProject();
+      if (command.agentThreadId != null) {
+        const thread = state.agentThread;
+        const reason =
+          thread == null || thread.deletedAt !== null
+            ? "missing"
+            : thread.projectId !== command.projectId
+              ? "different-project"
+              : thread.lineage.parentThreadId !== null ||
+                  thread.lineage.relationshipToParent !== null
+                ? "not-top-level"
+                : thread.archivedAt !== null
+                  ? "archived"
+                  : null;
+        if (reason !== null)
+          return Result.fail(
+            new ProjectAgentThreadError({
+              projectId: command.projectId,
+              threadId: command.agentThreadId,
+              reason,
+            }),
+          );
+      }
       if (
         command.projectIcon?.kind === "monogram" &&
         Array.from(monogramSegmenter.segment(command.projectIcon.text)).length > 2
@@ -196,6 +227,7 @@ export function planProjectCommand(input: {
         type: "project.meta-updated",
         payload: {
           projectId: command.projectId,
+          ...(command.agentThreadId === undefined ? {} : { agentThreadId: command.agentThreadId }),
           ...(command.title === undefined ? {} : { title: command.title }),
           ...(command.workspaceRoot === undefined ? {} : { workspaceRoot: command.workspaceRoot }),
           ...(command.defaultModelSelection === undefined

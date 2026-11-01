@@ -239,6 +239,7 @@ function makeHarness(options: HarnessOptions = {}) {
         requestedProjectId === projectId
           ? Option.some({
               projectId,
+              agentThreadId: null,
               title: project.title,
               workspaceRoot: project.workspaceRoot,
               defaultModelSelection: project.defaultModelSelection,

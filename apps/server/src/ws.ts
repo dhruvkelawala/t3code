@@ -2828,6 +2828,18 @@ export const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.projectsSetAgentThread]: (input) =>
+          startup.enqueueCommand(projectService.update(input)).pipe(
+            Effect.mapError((cause) =>
+              cause._tag === "ProjectAgentThreadError"
+                ? cause
+                : new ProjectMutationError({
+                    commandId: input.commandId,
+                    message: "Failed to set the project agent.",
+                    cause,
+                  }),
+            ),
+          ),
         [WS_METHODS.shellOpenInEditor]: (input) => externalLauncher.launchEditor(input),
         [WS_METHODS.filesystemGetMetadata]: (input) => workspaceFileSystem.getMetadata(input),
         [WS_METHODS.filesystemBrowse]: (input) =>

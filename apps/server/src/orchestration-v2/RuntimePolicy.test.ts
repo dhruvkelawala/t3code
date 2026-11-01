@@ -88,6 +88,7 @@ const layerTest = RuntimePolicy.layerFromProjectStore.pipe(
       get: () =>
         Effect.succeedSome({
           projectId,
+          agentThreadId: null,
           title: "Project",
           workspaceRoot: "/project-root",
           defaultModelSelection: null,

@@ -3,7 +3,16 @@ import * as Queue from "effect/Queue";
 import * as Tracer from "effect/Tracer";
 import { assert, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, type Project, ProjectId, ProviderInstanceId } from "@t3tools/contracts";
+import {
+  CommandId,
+  EventId,
+  type OrchestrationV2AppThread,
+  type Project,
+  ProjectId,
+  ProviderInstanceId,
+  ThreadId,
+} from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -11,6 +20,7 @@ import * as Layer from "effect/Layer";
 import * as Metric from "effect/Metric";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
+import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
 import * as SqlClient from "effect/sql/SqlClient";
 
@@ -27,6 +37,7 @@ import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
 import * as RuntimeLayer from "../orchestration-v2/runtimeLayer.ts";
 import * as ThreadCommandExecutor from "../orchestration-v2/ThreadCommandExecutor.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
+import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import * as ProjectEnrichmentService from "./ProjectEnrichmentService.ts";
@@ -95,6 +106,8 @@ const layerTestFor = (
   >,
 ) =>
   RuntimeLayer.layerProjectService.pipe(
+    Layer.provideMerge(RuntimeLayer.layerEventSink),
+    Layer.provideMerge(OrchestrationEventStore.layer),
     Layer.provideMerge(ProjectEnrichmentService.layer),
     Layer.provideMerge(layerWorkspacePaths),
     Layer.provideMerge(projectMetadataLayer),
@@ -106,6 +119,50 @@ const layerTestFor = (
   );
 
 const layerTest = layerTestFor(layerMetadata);
+
+const createAgentCandidate = Effect.fn("ProjectServiceTest.createAgentCandidate")(function* (
+  projectId: ProjectId,
+  threadId: ThreadId,
+  overrides: Partial<OrchestrationV2AppThread> = {},
+) {
+  const now = yield* DateTime.now;
+  const thread: OrchestrationV2AppThread = {
+    id: threadId,
+    projectId,
+    title: "Project agent",
+    createdBy: "user",
+    creationSource: "web",
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
+    runtimeMode: "full-access",
+    interactionMode: "default",
+    branch: null,
+    worktreePath: null,
+    activeProviderThreadId: null,
+    lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: threadId },
+    forkedFrom: null,
+    createdAt: now,
+    updatedAt: now,
+    archivedAt: null,
+    settledOverride: null,
+    settledAt: null,
+    lastVisitedAt: null,
+    deletedAt: null,
+    ...overrides,
+  };
+  yield* (yield* EventSink.EventSinkV2).write({
+    events: [
+      {
+        id: EventId.make(`create:${threadId}`),
+        type: "thread.created",
+        threadId,
+        occurredAt: now,
+        payload: thread,
+      },
+    ],
+  });
+  return thread;
+});
 
 const layerProjectServiceDependencies = Layer.mergeAll(
   RuntimeLayer.layerEventSink,
@@ -243,6 +300,206 @@ it.layer(layerTest)("ProjectService", (it) => {
         ["project.created", "project.meta-updated", "project.meta-updated", "project.deleted"],
       );
     }),
+  );
+
+  it.effect("persists the project agent in project reads and shell updates", () =>
+    Effect.gen(function* () {
+      const service = yield* ProjectService.ProjectService;
+      const projectId = ProjectId.make("project:agent");
+      const threadId = ThreadId.make("thread:agent");
+      yield* service.create({
+        commandId: CommandId.make("agent:create"),
+        projectId,
+        title: "Agent",
+        workspaceRoot: "/work/agent",
+      });
+      yield* createAgentCandidate(projectId, threadId);
+      const input = { commandId: CommandId.make("agent:set"), projectId, agentThreadId: threadId };
+      const updated = yield* service.update(input);
+      assert.equal(updated.agentThreadId, threadId);
+      assert.equal(Option.getOrThrow(yield* service.getById(projectId)).agentThreadId, threadId);
+      assert.equal(Option.getOrThrow(yield* service.getShell(projectId)).agentThreadId, threadId);
+    }),
+  );
+
+  it.effect("clears the project agent without changing it for an omitted field", () =>
+    Effect.gen(function* () {
+      const service = yield* ProjectService.ProjectService;
+      const projectId = ProjectId.make("project:agent-clear");
+      const threadId = ThreadId.make("thread:agent-clear");
+      yield* service.create({
+        commandId: CommandId.make("agent-clear:create"),
+        projectId,
+        title: "Clear",
+        workspaceRoot: "/work/agent-clear",
+      });
+      yield* createAgentCandidate(projectId, threadId);
+      yield* service.update({
+        commandId: CommandId.make("agent-clear:set"),
+        projectId,
+        agentThreadId: threadId,
+      });
+      const renamed = yield* service.update({
+        commandId: CommandId.make("agent-clear:rename"),
+        projectId,
+        title: "Renamed",
+      });
+      assert.equal(renamed.agentThreadId, threadId);
+      const cleared = yield* service.update({
+        commandId: CommandId.make("agent-clear:clear"),
+        projectId,
+        agentThreadId: null,
+      });
+      assert.isNull(cleared.agentThreadId);
+      assert.isNull(Option.getOrThrow(yield* service.getShell(projectId)).agentThreadId);
+    }),
+  );
+
+  it.effect("rejects unusable agent threads without changing the project or writing an event", () =>
+    Effect.gen(function* () {
+      const service = yield* ProjectService.ProjectService;
+      const sql = yield* SqlClient.SqlClient;
+      const projectId = ProjectId.make("project:agent-validation");
+      const threadId = ThreadId.make("thread:agent-valid");
+      yield* service.create({
+        commandId: CommandId.make("agent-validation:create"),
+        projectId,
+        title: "Original",
+        workspaceRoot: "/work/agent-validation",
+      });
+      yield* createAgentCandidate(projectId, threadId);
+      yield* service.update({
+        commandId: CommandId.make("agent-validation:set"),
+        projectId,
+        agentThreadId: threadId,
+      });
+      const now = yield* DateTime.now;
+      const cases = [
+        { id: "missing", reason: "missing" },
+        { id: "foreign-environment", reason: "missing" },
+        {
+          id: "other-project",
+          reason: "different-project",
+          overrides: { projectId: ProjectId.make("project:other") },
+        },
+        {
+          id: "subagent",
+          reason: "not-top-level",
+          overrides: {
+            lineage: {
+              parentThreadId: threadId,
+              relationshipToParent: "subagent",
+              rootThreadId: threadId,
+            },
+          },
+        },
+        {
+          id: "fork",
+          reason: "not-top-level",
+          overrides: {
+            lineage: {
+              parentThreadId: threadId,
+              relationshipToParent: "fork",
+              rootThreadId: threadId,
+            },
+          },
+        },
+        { id: "archived", reason: "archived", overrides: { archivedAt: now } },
+        { id: "deleted", reason: "missing", overrides: { deletedAt: now } },
+      ] as const;
+      for (const candidate of cases) {
+        const agentThreadId = ThreadId.make(`thread:agent-${candidate.id}`);
+        if ("overrides" in candidate)
+          yield* createAgentCandidate(projectId, agentThreadId, candidate.overrides);
+        const commandId = CommandId.make(`agent-validation:${candidate.id}`);
+        const rejected = yield* service
+          .update({ commandId, projectId, agentThreadId, title: "Rejected" })
+          .pipe(Effect.result);
+        assert.equal(rejected._tag, "Failure");
+        if (rejected._tag === "Failure")
+          assert.deepInclude(rejected.failure, {
+            _tag: "ProjectAgentThreadError",
+            projectId,
+            threadId: agentThreadId,
+            reason: candidate.reason,
+          });
+        assert.deepEqual(
+          yield* sql`SELECT sequence FROM orchestration_events WHERE command_id = ${commandId}`,
+          [],
+        );
+        const unchanged = Option.getOrThrow(yield* service.getById(projectId));
+        assert.equal(unchanged.agentThreadId, threadId);
+        assert.equal(unchanged.title, "Original");
+      }
+    }),
+  );
+
+  it.effect.each(["archived", "deleted", "moved"] as const)(
+    "clears the project agent durably when its thread is %s",
+    (change) =>
+      Effect.gen(function* () {
+        const service = yield* ProjectService.ProjectService;
+        const sink = yield* EventSink.EventSinkV2;
+        const events = yield* OrchestrationEventStore.OrchestrationEventStore;
+        const projectId = ProjectId.make(`project:agent-lifecycle-${change}`);
+        const threadId = ThreadId.make(`thread:agent-lifecycle-${change}`);
+        yield* service.create({
+          commandId: CommandId.make(`${change}:create`),
+          projectId,
+          title: change,
+          workspaceRoot: `/work/agent-${change}`,
+        });
+        const thread = yield* createAgentCandidate(projectId, threadId);
+        yield* service.update({
+          commandId: CommandId.make(`${change}:set`),
+          projectId,
+          agentThreadId: threadId,
+        });
+        const afterSequence = yield* events.latestApplicationSequence;
+        const now = yield* DateTime.now;
+        const eventId = EventId.make(`${change}:thread`);
+        yield* sink.write({
+          events: [
+            {
+              id: eventId,
+              threadId,
+              occurredAt: now,
+              type:
+                change === "moved"
+                  ? "thread.metadata-updated"
+                  : change === "deleted"
+                    ? "thread.deleted"
+                    : "thread.archived",
+              payload: {
+                ...thread,
+                ...(change === "moved"
+                  ? { projectId: ProjectId.make("project:destination") }
+                  : change === "deleted"
+                    ? { deletedAt: now }
+                    : { archivedAt: now }),
+              },
+            },
+          ],
+        });
+        assert.isNull(Option.getOrThrow(yield* service.getShell(projectId)).agentThreadId);
+        const committed = yield* events
+          .readApplicationEvents({
+            afterSequence,
+            throughSequence: yield* events.latestApplicationSequence,
+          })
+          .pipe(Stream.runCollect);
+        assert.equal(committed.length, 2);
+        assert.deepInclude(committed[1], {
+          aggregateKind: "project",
+          aggregateId: projectId,
+          type: "project.meta-updated",
+          causationEventId: eventId,
+        });
+        assert.deepInclude(
+          committed[1] && "aggregateKind" in committed[1] ? committed[1].payload : {},
+          { projectId, agentThreadId: null },
+        );
+      }),
   );
 
   it.effect("records the outcome and duration of a committed project command", () =>
@@ -461,6 +718,11 @@ it.layer(layerTest)("ProjectService", (it) => {
         title: "Delete retry",
         workspaceRoot: "/work/delete-retry",
       });
+      yield* waitForProject(
+        service,
+        projectId,
+        (project) => project.repositoryIdentity !== null && project.faviconPath !== null,
+      );
       const input = { commandId: CommandId.make("command:delete-retry:delete"), projectId };
       const deleted = yield* service.delete(input);
       assert.deepEqual(yield* service.delete(input), deleted);

@@ -1,5 +1,7 @@
 import {
   CommandId,
+  EventId,
+  type ApplicationProjectEvent,
   type OrchestrationV2Run,
   OrchestrationV2DomainEvent,
   type OrchestrationV2ProviderThread,
@@ -245,12 +247,15 @@ const layerBase: Layer.Layer<
     // Recorded before publication, so an interrupted publish cannot lose a committed outcome.
     const publishStoredEvents = (
       events: ReadonlyArray<OrchestrationV2StoredEvent>,
-      outcomes: ReadonlyArray<RunOutcome>,
+      applied: {
+        readonly outcomes: ReadonlyArray<RunOutcome>;
+        readonly projectEvents: ReadonlyArray<ApplicationProjectEvent>;
+      },
     ) =>
       runOutcomes
-        .record(outcomes)
+        .record(applied.outcomes)
         .pipe(
-          Effect.andThen(eventStore.publishCommitted(events)),
+          Effect.andThen(eventStore.publishCommitted([...events, ...applied.projectEvents])),
           Effect.andThen(publishLiveEvents(events)),
         );
 
@@ -381,8 +386,44 @@ const layerBase: Layer.Layer<
               updated_at = excluded.updated_at
           `;
         }
-        // Read lineage here, on the connection this transaction holds; see makeRunOutcomeRecorder.
-        return yield* runOutcomes.prepare(storedEvents);
+        const projectEvents: Array<ApplicationProjectEvent> = [];
+        for (const { event } of storedEvents) {
+          if (
+            event.type !== "thread.archived" &&
+            event.type !== "thread.deleted" &&
+            event.type !== "thread.metadata-updated"
+          )
+            continue;
+          const thread = event.payload;
+          const owners = yield* projectStore.list({ agentThreadId: event.threadId });
+          for (const project of owners) {
+            if (
+              thread.projectId === project.projectId &&
+              thread.archivedAt === null &&
+              thread.deletedAt === null &&
+              thread.lineage.parentThreadId === null &&
+              thread.lineage.relationshipToParent === null
+            )
+              continue;
+            const updatedAt = DateTime.formatIso(event.occurredAt);
+            const cleared = yield* eventStore.appendProjectEvent({
+              eventId: EventId.make(`${event.id}:project-agent:${project.projectId}`),
+              aggregateKind: "project",
+              aggregateId: project.projectId,
+              type: "project.meta-updated",
+              occurredAt: updatedAt,
+              commandId: null,
+              causationEventId: event.id,
+              correlationId: null,
+              metadata: {},
+              payload: { projectId: project.projectId, agentThreadId: null, updatedAt },
+            });
+            yield* projectStore.apply(cleared);
+            projectEvents.push(cleared);
+          }
+        }
+        // Read lineage on the connection this transaction holds; see makeRunOutcomeRecorder.
+        return { outcomes: yield* runOutcomes.prepare(storedEvents), projectEvents };
       });
 
     // The enclosing write or commit span already traces this per-event projection merge.
@@ -430,7 +471,8 @@ const layerBase: Layer.Layer<
                 AND json_extract(payload_json, '$.nativeThreadRef.nativeId') = ${imported.nativeThreadRef.nativeId}
               LIMIT 1
             `;
-            if (owners.length > 0) return { committed: [], outcomes: [] };
+            if (owners.length > 0)
+              return { committed: [], outcomes: { outcomes: [], projectEvents: [] } };
           }
           // Checkpoint capture can finish after a cohort writer reads its parent run.
           // Merge in this transaction so the event log and projection keep that completion.
@@ -1003,11 +1045,7 @@ const layerBase: Layer.Layer<
 /** Share the worker's outbox instance: enqueue wakeups are in-memory. */
 export const layerFromStores = layerBase;
 
-export const layer: Layer.Layer<
-  EventSinkV2,
-  never,
-  EventStore.EventStoreV2 | ProjectionStore.ProjectionStoreV2 | SqlClient.SqlClient
-> = layerBase.pipe(
+export const layer = layerBase.pipe(
   Layer.provide(
     Layer.mergeAll(
       CommandReceiptStore.layer,

@@ -8,6 +8,7 @@ import {
   IsoDateTime,
   NonNegativeInt,
   ProjectId,
+  ThreadId,
   ProviderItemId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
@@ -50,6 +51,7 @@ export type ApplicationProjectCreatedPayload = typeof ApplicationProjectCreatedP
 
 export const ApplicationProjectMetaUpdatedPayload = Schema.Struct({
   projectId: ProjectId,
+  agentThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
